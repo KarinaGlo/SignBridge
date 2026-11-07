@@ -1,0 +1,22 @@
+# configs/03r_rgb_only_bisindo.yaml — M2 (E7 Ablation): RGB-Only VideoMAE Token Pooler + BiGRU
+experiment_id: "M2_rgb_only_bisindo"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  num_classes: 32
+  use_rgb: true
+  augment: false
+model:
+  type: "rgb_only"
+  rgb_dim: 768
+  hidden_dim: 256
+  dropout: 0.2
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0003
+  weight_decay: 0.01
+  label_smoothing: 0.1
+output_dir: "runs/03r_rgb_only_bisindo"
+

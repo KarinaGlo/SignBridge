@@ -1,0 +1,81 @@
+# configs/train_wlasl.yaml
+# Konfigurasi pretraining SignBridge pada dataset WLASL
+# File ini terpisah dari train_bisindo.yaml dan tidak saling berbagi parameter secara implisit.
+
+seed: 42
+
+model:
+  num_classes: 2006         # total gloss WLASL
+  use_phonological_head: false
+
+  stream_a:
+    arch: "stgcn"           # pilihan: "stgcn" | "pose_transformer"
+    num_blocks: 10           # valid: 4–20
+    hidden_dim: 256          # valid: 128–512
+    num_heads: 8             # valid: 1–16
+
+  stream_b:
+    arch: "videomae"         # pilihan: "videomae" | "i3d" | "mobilevit"
+    pretrained_url: "https://huggingface.co/MCG-NJU/videomae-base-finetuned-kinetics/resolve/main/pytorch_model.bin"
+    frozen_layers: []        # kosong = tidak ada layer yang dibekukan
+
+  fusion:
+    num_heads: 8
+    dim: 512
+
+  gloss_head:
+    label_smoothing: 0.1     # valid: [0.0, 1.0)
+
+  phonological_head:
+    # Fonologis_Head dinonaktifkan untuk WLASL (use_phonological_head: false)
+    num_handshape: 20
+    num_lokasi: 10
+    num_arah_gerak: 8
+    lambda_handshape: 0.3
+    lambda_lokasi: 0.3
+    lambda_arah_gerak: 0.3
+
+training:
+  base_lr: 1.0e-4            # valid: 1e-5 to 1e-2
+  pretrained_lr_factor: 0.1
+  early_stopping_patience: 10
+  max_checkpoints: 3
+  max_epochs: 50
+  # Threshold kelayakan pretraining: Top-1 >= 60% pada WLASL-100
+  wlasl100_top1_threshold: 0.60
+
+augmentation:
+  enabled: true
+  temporal:
+    speed_range: [0.7, 1.3]
+    max_frame_drop_ratio: 0.20
+    max_temporal_jitter: 3
+  spatial_keypoint:
+    flip_prob: 0.5
+    rotation_range: [-15.0, 15.0]
+    noise_std: 0.02
+  spatial_rgb:
+    crop_scale_range: [0.8, 1.0]
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+
+distillation:
+  alpha: 0.7
+  temperature: 4.0
+  onnx_opset: 17
+  max_model_size_mb: 10
+
+data:
+  dataset: "wlasl"
+  split_ratios: [0.80, 0.20]  # hanya train/val untuk WLASL
+  min_samples_per_gloss: 2    # minimal sampel per gloss per split
+  t_max: 128
+  t_sample_rgb: 16
+
+paths:
+  data_dir: "data/wlasl"
+  keypoint_dir: "data/keypoints/wlasl"
+  checkpoint_dir: "checkpoints/wlasl"
+  log_dir: "logs/wlasl"
+  output_dir: "outputs/wlasl"

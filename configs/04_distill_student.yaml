@@ -1,0 +1,30 @@
+# configs/04_distill_student.yaml — M5 (E6): Distilled Student PoseTransformer (alpha=0.5, T=4.0)
+experiment_id: "M5_distilled_student"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  use_rgb: true
+  augment: true
+model:
+  type: "student"
+  d_model: 160
+  nhead: 4
+  num_layers: 4
+  dropout: 0.1
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0005
+  weight_decay: 0.01
+  label_smoothing: 0.1
+  distill:
+    enabled: true
+    teacher_ckpt: "runs/03_fusion_bisindo/best.pt"
+    alpha: 0.5
+    temperature: 4.0
+output_dir: "runs/04_distill_student"
+

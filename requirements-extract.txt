@@ -1,0 +1,7 @@
+# requirements-extract.txt — Lingkungan 1: Ekstraksi MediaPipe Holistic (Python 3.10/3.11)
+mediapipe>=0.10.9
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+tqdm>=4.66.0
+pyyaml>=6.0.1
+

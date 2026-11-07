@@ -1,0 +1,73 @@
+# configs/eval_bisindo.yaml
+# Konfigurasi evaluasi SignBridge untuk dataset WL-BISINDO
+# Digunakan oleh: python evaluate.py --config configs/eval_bisindo.yaml
+
+seed: 42
+
+evaluation:
+  # Leave-one-signer-out cross-validation
+  mode: "leave_one_signer_out"
+  num_folds: 5
+  report_top1: true
+  report_top5: true
+  # Jika num_classes <= 5, hanya laporkan Top-1
+  top5_min_classes: 6
+
+  # Target performa (untuk logging warning jika tidak tercapai)
+  teacher_top1_threshold: 0.85   # 85% Top-1 rata-rata atas 5 fold
+  teacher_top5_threshold: 0.97   # 97% Top-5 rata-rata atas 5 fold
+  student_top1_threshold: 0.78   # 78% Top-1 (distilasi)
+
+  # Laporan output
+  output_format: "markdown"
+  output_path: "outputs/eval_results.md"
+  include_per_fold: true
+  include_confusion_matrix: false
+
+model:
+  num_classes: 32
+  use_phonological_head: true
+
+  stream_a:
+    arch: "stgcn"
+    num_blocks: 10
+    hidden_dim: 256
+    num_heads: 8
+
+  stream_b:
+    arch: "videomae"
+    pretrained_url: "https://huggingface.co/MCG-NJU/videomae-base-finetuned-kinetics/resolve/main/pytorch_model.bin"
+    frozen_layers: []
+
+  fusion:
+    num_heads: 8
+    dim: 512
+
+  gloss_head:
+    label_smoothing: 0.1
+
+  phonological_head:
+    num_handshape: 20
+    num_lokasi: 10
+    num_arah_gerak: 8
+    lambda_handshape: 0.3
+    lambda_lokasi: 0.3
+    lambda_arah_gerak: 0.3
+
+data:
+  dataset: "wl-bisindo"
+  kaggle_identifier: "dataset/wl-bisindo"
+  t_max: 128
+  t_sample_rgb: 16
+
+paths:
+  data_dir: "data/wl_bisindo"
+  keypoint_dir: "data/keypoints/wl_bisindo"
+  checkpoint_path: "checkpoints/bisindo/best_model.pth"
+  student_onnx_path: "checkpoints/bisindo/student_model.onnx"
+  log_dir: "logs/eval"
+  output_dir: "outputs/eval"
+
+onnx_validation:
+  num_samples: 100
+  max_prob_diff: 1.0e-4        # threshold inklusif (perbedaan tepat 1e-4 = lulus)

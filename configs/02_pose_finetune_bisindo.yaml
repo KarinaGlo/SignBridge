@@ -1,0 +1,27 @@
+# configs/02_pose_finetune_bisindo.yaml — M1 / E1-E3: ST-GCN Fine-tune BISINDO + Multitask Fonologi
+experiment_id: "M1_pose_finetune_bisindo"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  phonology_csv: "data/phonology.csv"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  augment: true
+model:
+  type: "pose"
+  hidden_dim: 256
+  num_blocks: 6
+  dropout: 0.2
+  use_phonology: true
+  pretrained_ckpt: "runs/01_pose_pretrain_wlasl/best.pt"
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0005
+  weight_decay: 0.0001
+  label_smoothing: 0.1
+  lambda_phonology: 0.5
+output_dir: "runs/02_pose_finetune_bisindo"
+

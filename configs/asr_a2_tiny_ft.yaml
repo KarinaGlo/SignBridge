@@ -1,0 +1,12 @@
+# configs/asr_a2_tiny_ft.yaml — A2: Whisper-tiny Fine-tuned Korpus Suara Kelas Indonesia
+experiment_id: "A2_whisper_tiny_ft_id"
+seed: 42
+model_name: "openai/whisper-tiny"
+language: "id"
+finetune: true
+epochs: 5
+batch_size: 8
+lr: 0.00001
+dataset_csv: "data/audio/metadata.csv"
+output_dir: "runs/asr_a2_tiny_ft"
+

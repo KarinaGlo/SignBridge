@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignBridge — Jembatan Komunikasi Real-Time BISINDO &amp; FSL (ASEAN)</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./css/style.css" />
+  <!-- MediaPipe Holistic & ONNX Runtime Web -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">SB</span>
+      <div>
+        <h1>SignBridge ASEAN (BISINDO &harr; FSL)</h1>
+        <p id="engine-status">Memuat ONNX Runtime Web &amp; Kosakata 32 Gloss...</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <label for="bridge-direction" class="muted">Arah Jembatan:</label>
+      <select id="bridge-direction" aria-label="Arah Jembatan Bahasa">
+        <option value="ID-PH">Indonesia (BISINDO) &rarr; Filipina (FSL)</option>
+        <option value="PH-ID">Filipina (FSL) &rarr; Indonesia (BISINDO)</option>
+      </select>
+
+      <input id="room-code-input" type="text" maxlength="8" placeholder="Kode Ruang (mis. 4829)" style="width: 155px;" />
+      <button id="btn-join-room" type="button" class="btn">Gabung Ruang</button>
+      <span id="room-status-badge" class="state-pill">Lokal (1 Perangkat)</span>
+    </div>
+  </header>
+
+  <nav class="nav-tabs" aria-label="Mode Aplikasi">
+    <button type="button" class="tab-btn active" data-tab-target="panel-classroom">1. Ruang Kelas 2-Arah</button>
+    <button type="button" class="tab-btn" data-tab-target="panel-bridge">2. Jembatan ASEAN (ID &harr; PH)</button>
+    <button type="button" class="tab-btn" data-tab-target="panel-practice">3. Mode Latihan Mandiri</button>
+    <button type="button" class="tab-btn" data-tab-target="panel-recorder">4. Perekam Dataset Multimodal</button>
+  </nav>
+
+  <main class="main-container">
+    <!-- TAB 1: RUANG KELAS 2-ARAH -->
+    <section id="panel-classroom" class="tab-panel active">
+      <div class="classroom-grid">
+        <!-- Kiri: Tuli -> Dengar -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Arah 1: Siswa Tuli &rarr; Guru/Teman Dengar</h2>
+            <span id="sign-state-badge" class="state-pill">Idle</span>
+          </div>
+
+          <div class="viewport-box">
+            <video id="camera-video" playsinline muted></video>
+            <canvas id="camera-canvas" width="640" height="480"></canvas>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:0.65rem;">
+            <button id="btn-toggle-camera" type="button" class="btn">Aktifkan Kamera</button>
+            <select id="recognition-mode" aria-label="Mode Pengenalan">
+              <option value="hybrid">Mode Gabungan: 32 Kata BISINDO/FSL + 26 Abjad A-Z</option>
+              <option value="video">Mode Kata: 32 Konsep BISINDO &harr; FSL (Database Fonologi)</option>
+              <option value="fingerspell">Mode Abjad: 26 Huruf Ejaan Jari A-Z (224x224)</option>
+            </select>
+            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.88rem; font-weight:600; cursor:pointer;">
+              <input id="chk-auto-speak" type="checkbox" checked />
+              Suara Otomatis (TTS)
+            </label>
+            <button id="btn-clear-glosses" type="button" class="btn btn-outline">Bersihkan</button>
+          </div>
+
+          <div id="active-sign-guide" class="muted" style="background:rgba(14,165,233,0.08); border-left:3px solid #0ea5e9; padding:0.45rem 0.7rem; border-radius:6px; margin-bottom:0.6rem; font-size:0.85rem;">
+            <strong>Panduan Database:</strong> Angkat tangan ke depan kamera untuk mulai berisyarat (saat tangan di bawah / diam, suara tidak akan aktif).
+          </div>
+
+          <p class="muted" style="margin-bottom:0.25rem;"><strong>Database 32 Kata Isyarat (BISINDO &harr; FSL Filipina):</strong></p>
+          <div id="quick-gloss-buttons" class="chip-row" style="max-height:115px; overflow-y:auto; padding:0.25rem; border:1px solid var(--border); border-radius:8px;"></div>
+
+          <p class="muted" style="margin-top:0.55rem; margin-bottom:0.25rem;"><strong>Database 26 Abjad Ejaan Jari (A&ndash;Z):</strong></p>
+          <div id="quick-alphabet-buttons" class="chip-row"></div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-top:0.45rem; background:var(--surface); padding:0.4rem 0.6rem; border:1px dashed var(--border); border-radius:8px;">
+            <span class="muted" style="font-size:0.85rem;">Ejaan Abjad (A-Z):</span>
+            <strong id="spelled-word-output" style="letter-spacing:0.1em; color:var(--accent);">-</strong>
+            <button id="btn-commit-spelled" type="button" class="btn-sm btn-accent" style="margin-left:auto;">Masukkan &amp; Suarakan Ejaan</button>
+            <button id="btn-back-spelled" type="button" class="btn-sm">Hapus 1 Huruf</button>
+          </div>
+
+          <div style="margin-top:0.6rem;">
+            <span class="muted">Top-3 Prediksi Database (BISINDO &amp; FSL):</span>
+            <div id="top3-predictions" class="chip-row"></div>
+          </div>
+
+          <div style="margin-top:0.6rem;">
+            <span class="muted">Deret Gloss Terkumpul:</span>
+            <div id="gloss-sequence-chips" class="chip-row">
+              <span class="muted">Belum ada isyarat.</span>
+            </div>
+          </div>
+
+          <div id="natural-sentence-output" class="sentence-box">Menunggu deret isyarat...</div>
+          <p id="classroom-bridge-output" class="muted" style="margin-bottom:0.75rem;"></p>
+
+          <button id="btn-speak-sentence" type="button" class="btn">Bacakan Kalimat (TTS) &amp; Kirim ke Ruang</button>
+        </div>
+
+        <!-- Kanan: Dengar -> Tuli -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Arah 2: Guru/Teman Dengar &rarr; Siswa Tuli</h2>
+            <button id="btn-mic-listen" type="button" class="btn">Mulai Bicara (STT)</button>
+          </div>
+
+          <div id="giant-caption" class="giant-caption-box" role="status" aria-live="polite">
+            Halo teman-teman, mari kita belajar bersama di kelas.
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.85rem;">
+            <input id="hearing-text-input" type="text" placeholder="Ketik ucapan guru/teman (ID atau Filipino)..." style="flex:1;" />
+            <button id="btn-send-hearing" type="button" class="btn">Tampilkan &amp; Isyaratkan</button>
+          </div>
+
+          <span class="muted">Token Konsep Gloss Terdeteksi (Klik untuk memutar animasi L3):</span>
+          <div id="hearing-gloss-tokens" class="chip-row"></div>
+
+          <div class="viewport-box" style="aspect-ratio: 16 / 9; margin-top:0.75rem;">
+            <canvas id="hearing-sign-canvas" width="480" height="270"></canvas>
+          </div>
+          <p id="hearing-sign-canvas-label" class="muted">Peraga Kerangka L3: HALO</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: JEMBATAN ASEAN (ID <-> PH) -->
+    <section id="panel-bridge" class="tab-panel">
+      <div class="classroom-grid" style="margin-bottom:1.5rem;">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Jembatan Lintas Negara 3 Lapis (L1 / L2 / L3)</h2>
+            <span id="bridge-layer-badge" class="state-pill">L1-Concept</span>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.85rem;">
+            <input id="bridge-input-text" type="text" value="Saya mau tanya guru tentang tugas buku" style="flex:1;" />
+            <button id="btn-run-bridge" type="button" class="btn">Terjemahkan (ID &harr; PH)</button>
+          </div>
+
+          <div style="margin-bottom:0.75rem;">
+            <strong>Lapis 1 (L1 Concept Lookup — <code>concepts.csv</code>):</strong>
+            <div id="bridge-l1-output" class="muted" style="margin-top:0.25rem;">Klik Terjemahkan untuk melihat pemetaan konsep BISINDO &harr; FSL.</div>
+          </div>
+
+          <div>
+            <strong>Lapis 2 (L2 Neural Machine Translation &amp; Fallback):</strong>
+            <div id="bridge-l2-output" class="sentence-box">Gusto ko pong magtanong sa guro tungkol sa takdang-aralin at libro.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Lapis 3 (L3 Peraga Kerangka Isyarat Referensi)</h2>
+            <span id="l3-canvas-label" class="muted">Peraga Kerangka L3: HALO</span>
+          </div>
+          <div class="viewport-box" style="aspect-ratio: 16 / 9;">
+            <canvas id="l3-canvas" width="480" height="270"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Database Bahasa Isyarat: 32 Kata (BISINDO &harr; FSL) &amp; 26 Abjad (A&ndash;Z)</h2>
+          <div class="chip-row">
+            <button type="button" class="chip-btn active" data-concept-filter="Semua">Semua 32 Kata</button>
+            <button type="button" class="chip-btn" data-concept-filter="Abjad">26 Abjad (A-Z)</button>
+            <button type="button" class="chip-btn" data-concept-filter="Sapaan">Sapaan</button>
+            <button type="button" class="chip-btn" data-concept-filter="Subjek">Subjek</button>
+            <button type="button" class="chip-btn" data-concept-filter="Modalitas">Modalitas</button>
+            <button type="button" class="chip-btn" data-concept-filter="Aktivitas">Aktivitas</button>
+            <button type="button" class="chip-btn" data-concept-filter="Objek Kelas">Objek Kelas</button>
+            <button type="button" class="chip-btn" data-concept-filter="Tanya">Tanya</button>
+            <button type="button" class="chip-btn" data-concept-filter="Evaluasi">Evaluasi</button>
+          </div>
+        </div>
+        <div id="concept-board-grid" class="concept-grid"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MODE LATIHAN MANDIRI -->
+    <section id="panel-practice" class="tab-panel">
+      <div class="classroom-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Latihan Isyarat Interaktif</h2>
+            <span class="state-pill">Skor Beruntun: <strong id="practice-streak">0</strong></span>
+          </div>
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.85rem;">
+            <select id="practice-target-select" style="flex:1;"></select>
+            <button id="btn-practice-random" type="button" class="btn btn-outline">Acak Target</button>
+            <button id="btn-practice-try" type="button" class="btn">Uji Isyarat Sekarang</button>
+          </div>
+          <div id="practice-feedback" class="sentence-box">Pilih gloss target lalu peragakan di depan kamera atau klik Uji Isyarat.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Contoh Gerakan Referensi</h2>
+            <span id="practice-ref-canvas-label" class="muted">Peraga Kerangka L3: SAYA</span>
+          </div>
+          <div class="viewport-box" style="aspect-ratio: 16 / 9;">
+            <canvas id="practice-ref-canvas" width="480" height="270"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PEREKAM DATASET MULTIMODAL -->
+    <section id="panel-recorder" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Perekam Dataset Multimodal Terpadu (Video + Audio + Citra + Keypoints 86 Titik)</h2>
+          <span class="state-pill">Klip Terekam: <strong id="rec-clip-count">0</strong></span>
+        </div>
+        <p class="muted" style="margin-bottom:0.85rem;">
+          Sesuai Modul 02 Langkah 10: Satu sesi rekaman menangkap video WebM, audio WAV, citra portrait, hand crop 224x224, dan keypoint 86 titik JSON ke dalam arsip <code>.zip</code> siap olah oleh <code>scripts/web_dataset_to_multimodal.py</code>.
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:0.65rem; align-items:center;">
+          <label>Penutur:
+            <select id="rec-signer">
+              <option value="S01">S01 (Farrel)</option>
+              <option value="S02">S02 (Jonnathan)</option>
+              <option value="S03">S03 (Gloria)</option>
+              <option value="S04">S04 (Mitra 1)</option>
+              <option value="S05">S05 (Mitra 2)</option>
+              <option value="S06">S06 (Mitra 3)</option>
+            </select>
+          </label>
+          <label>Kategori:
+            <select id="rec-category">
+              <option value="gloss">Gloss Kata (32 Kelas)</option>
+              <option value="letter">Huruf Ejaan Jari (A-Z)</option>
+            </select>
+          </label>
+          <label>Target:
+            <select id="rec-target"></select>
+          </label>
+          <button id="btn-record-clip" type="button" class="btn">Rekam Klip (2.5 dtk)</button>
+          <button id="btn-export-zip" type="button" class="btn btn-outline">Unduh Paket Dataset (.zip)</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
+

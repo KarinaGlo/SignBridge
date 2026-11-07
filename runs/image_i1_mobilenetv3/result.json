@@ -1,0 +1,12 @@
+{
+  "name": "image_i1_mobilenetv3",
+  "arch": "mobilenetv3_small",
+  "modality": "image",
+  "num_classes": 26,
+  "param_millions": 0.266,
+  "best_val_acc": 0.0385,
+  "test_acc": 0.0385,
+  "macro_f1": 0.0385,
+  "cross_dataset": 0.0,
+  "latency_cpu_ms": 9.04
+}

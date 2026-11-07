@@ -1,0 +1,25 @@
+# configs/01_pose_pretrain_wlasl.yaml — M1 Stage 1: Pra-latih ST-GCN pada WLASL-100
+experiment_id: "M1_pose_pretrain_wlasl"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  source_filter: "wlasl"
+  num_classes: 100
+  seq_len: 64
+  num_keypoints: 86
+  augment: true
+model:
+  type: "pose"
+  hidden_dim: 256
+  num_blocks: 6
+  dropout: 0.2
+  use_phonology: false
+training:
+  epochs: 50
+  batch_size: 32
+  lr: 0.001
+  weight_decay: 0.0001
+  label_smoothing: 0.1
+output_dir: "runs/01_pose_pretrain_wlasl"
+

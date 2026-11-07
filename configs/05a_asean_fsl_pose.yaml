@@ -1,0 +1,25 @@
+# configs/05a_asean_fsl_pose.yaml — X3: Transfer Lintas Negara BISINDO -> FSL-105 (ST-GCN Pose)
+experiment_id: "X3_asean_fsl_pose"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  source_filter: "fsl"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  augment: true
+model:
+  type: "pose"
+  hidden_dim: 256
+  num_blocks: 6
+  dropout: 0.2
+  pretrained_ckpt: "runs/02_pose_finetune_bisindo/best.pt"
+training:
+  epochs: 30
+  batch_size: 16
+  lr: 0.0004
+  weight_decay: 0.0001
+  label_smoothing: 0.1
+output_dir: "runs/05a_asean_fsl_pose"
+

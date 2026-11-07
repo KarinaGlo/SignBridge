@@ -1,0 +1,30 @@
+# configs/03b_concat_bisindo.yaml — M3 (E4 Ablation): 2-Stream Gated Fusion tanpa Cross-Attention (fusion_layers=0)
+experiment_id: "M3_concat_gated_bisindo"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  phonology_csv: "data/phonology.csv"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  use_rgb: true
+  augment: true
+model:
+  type: "fusion"
+  hidden_dim: 256
+  rgb_dim: 768
+  fusion_layers: 0
+  nhead: 4
+  rgb_drop_p: 0.1
+  use_phonology: true
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0003
+  weight_decay: 0.01
+  label_smoothing: 0.1
+  lambda_aux: 0.3
+  lambda_phonology: 0.5
+output_dir: "runs/03b_concat_bisindo"
+

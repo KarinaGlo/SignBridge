@@ -1,0 +1,140 @@
+# graph_config.yaml
+# Topologi Keypoint_Graph untuk Stream_A (ST-GCN / Pose-Transformer)
+# Hanya menggunakan 33 keypoint pose tubuh MediaPipe (indeks 0–32)
+# Referensi: design.md § KeypointGraph (YAML), Requirement 4.1–4.5
+
+num_nodes: 33
+
+# Label node (MediaPipe Pose — indeks 0–32)
+node_labels:
+  - "nose"              # 0
+  - "left_eye_inner"   # 1
+  - "left_eye"         # 2
+  - "left_eye_outer"   # 3
+  - "right_eye_inner"  # 4
+  - "right_eye"        # 5
+  - "right_eye_outer"  # 6
+  - "left_ear"         # 7
+  - "right_ear"        # 8
+  - "mouth_left"       # 9
+  - "mouth_right"      # 10
+  - "left_shoulder"    # 11
+  - "right_shoulder"   # 12
+  - "left_elbow"       # 13
+  - "right_elbow"      # 14
+  - "left_wrist"       # 15
+  - "right_wrist"      # 16
+  - "left_pinky"       # 17
+  - "right_pinky"      # 18
+  - "left_index"       # 19
+  - "right_index"      # 20
+  - "left_thumb"       # 21
+  - "right_thumb"      # 22
+  - "left_hip"         # 23
+  - "right_hip"        # 24
+  - "left_knee"        # 25
+  - "right_knee"       # 26
+  - "left_ankle"       # 27
+  - "right_ankle"      # 28
+  - "left_heel"        # 29
+  - "right_heel"       # 30
+  - "left_foot_index"  # 31
+  - "right_foot_index" # 32
+
+edges:
+  # -----------------------------------------------------------------------
+  # Koneksi SPASIAL — sambungan anatomis antar sendi
+  # Format: [src, dst]  (tidak berarah; implementasi membuat edge dua arah)
+  # -----------------------------------------------------------------------
+  spatial:
+    # --- Wajah ---
+    - [0, 1]    # nose — left_eye_inner
+    - [0, 4]    # nose — right_eye_inner
+    - [1, 2]    # left_eye_inner — left_eye
+    - [2, 3]    # left_eye — left_eye_outer
+    - [3, 7]    # left_eye_outer — left_ear
+    - [4, 5]    # right_eye_inner — right_eye
+    - [5, 6]    # right_eye — right_eye_outer
+    - [6, 8]    # right_eye_outer — right_ear
+    - [9, 10]   # mouth_left — mouth_right
+    - [0, 9]    # nose — mouth_left
+    - [0, 10]   # nose — mouth_right
+
+    # --- Torso ---
+    - [11, 12]  # left_shoulder — right_shoulder
+    - [11, 23]  # left_shoulder — left_hip
+    - [12, 24]  # right_shoulder — right_hip
+    - [23, 24]  # left_hip — right_hip
+
+    # --- Lengan kiri ---
+    - [11, 13]  # left_shoulder — left_elbow
+    - [13, 15]  # left_elbow — left_wrist
+    - [15, 17]  # left_wrist — left_pinky
+    - [15, 19]  # left_wrist — left_index
+    - [15, 21]  # left_wrist — left_thumb
+    - [17, 19]  # left_pinky — left_index
+
+    # --- Lengan kanan ---
+    - [12, 14]  # right_shoulder — right_elbow
+    - [14, 16]  # right_elbow — right_wrist
+    - [16, 18]  # right_wrist — right_pinky
+    - [16, 20]  # right_wrist — right_index
+    - [16, 22]  # right_wrist — right_thumb
+    - [18, 20]  # right_pinky — right_index
+
+    # --- Kaki kiri ---
+    - [23, 25]  # left_hip — left_knee
+    - [25, 27]  # left_knee — left_ankle
+    - [27, 29]  # left_ankle — left_heel
+    - [27, 31]  # left_ankle — left_foot_index
+    - [29, 31]  # left_heel — left_foot_index
+
+    # --- Kaki kanan ---
+    - [24, 26]  # right_hip — right_knee
+    - [26, 28]  # right_knee — right_ankle
+    - [28, 30]  # right_ankle — right_heel
+    - [28, 32]  # right_ankle — right_foot_index
+    - [30, 32]  # right_heel — right_foot_index
+
+    # --- Koneksi kepala ke leher (shoulder midpoint) ---
+    - [0, 11]   # nose — left_shoulder  (aproksimasi leher)
+    - [0, 12]   # nose — right_shoulder
+
+  # -----------------------------------------------------------------------
+  # Koneksi TEMPORAL — digenerate secara programatik oleh KeypointGraphBuilder
+  # Setiap node_i pada frame_t dihubungkan ke node_i pada frame_t+1
+  # Tidak perlu didaftar di sini; builder akan membuat edge:
+  #   (node_i, t) → (node_i, t+1)  untuk semua i ∈ [0, num_nodes-1]
+  # -----------------------------------------------------------------------
+  temporal: []  # programatik — lihat KeypointGraphBuilder.build_temporal_edges()
+
+  # -----------------------------------------------------------------------
+  # Koneksi SIMETRI — pasangan kiri ↔ kanan yang bersesuaian secara anatomis
+  # Digunakan untuk augmentasi horizontal flip (menukar edge secara konsisten)
+  # -----------------------------------------------------------------------
+  symmetry:
+    - [1, 4]    # left_eye_inner ↔ right_eye_inner
+    - [2, 5]    # left_eye ↔ right_eye
+    - [3, 6]    # left_eye_outer ↔ right_eye_outer
+    - [7, 8]    # left_ear ↔ right_ear
+    - [9, 10]   # mouth_left ↔ mouth_right
+    - [11, 12]  # left_shoulder ↔ right_shoulder
+    - [13, 14]  # left_elbow ↔ right_elbow
+    - [15, 16]  # left_wrist ↔ right_wrist
+    - [17, 18]  # left_pinky ↔ right_pinky
+    - [19, 20]  # left_index ↔ right_index
+    - [21, 22]  # left_thumb ↔ right_thumb
+    - [23, 24]  # left_hip ↔ right_hip
+    - [25, 26]  # left_knee ↔ right_knee
+    - [27, 28]  # left_ankle ↔ right_ankle
+    - [29, 30]  # left_heel ↔ right_heel
+    - [31, 32]  # left_foot_index ↔ right_foot_index
+
+# -----------------------------------------------------------------------
+# Metadata validasi
+# -----------------------------------------------------------------------
+validation:
+  # Node index harus berada dalam rentang [0, num_nodes - 1] = [0, 32]
+  node_index_range: [0, 32]
+  # Tidak boleh ada isolated node setelah semua edge (spasial + simetri) dikonstruksi
+  allow_isolated_nodes: false

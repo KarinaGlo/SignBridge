@@ -1,0 +1,31 @@
+{
+  "name": "signbridge-bisindo-web",
+  "version": "1.0.0",
+  "description": "SignBridge BISINDO — browser-based inference using ONNX Runtime Web and MediaPipe JS",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/js/parity.test.mjs tests/js/handcrop.test.mjs"
+  },
+  "dependencies": {
+    "@mediapipe/holistic": "0.5.1675471629",
+    "@mediapipe/camera_utils": "0.3.1675466862",
+    "@mediapipe/drawing_utils": "0.3.1675466124",
+    "onnxruntime-web": "1.18.0"
+  },
+  "devDependencies": {
+    "vite": "5.2.13"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": [
+    "Chrome >= 90",
+    "Firefox >= 88",
+    "Edge >= 90"
+  ]
+}

@@ -1,0 +1,28 @@
+# configs/00_student_baseline.yaml — M0: Student PoseTransformer dari nol (Tanpa KD)
+experiment_id: "M0_student_baseline"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  phonology_csv: "data/phonology.csv"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  augment: true
+model:
+  type: "student"
+  d_model: 160
+  nhead: 4
+  num_layers: 4
+  dropout: 0.1
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0005
+  weight_decay: 0.01
+  label_smoothing: 0.1
+  use_phonology: false
+  distill:
+    enabled: false
+output_dir: "runs/00_student_baseline"
+
