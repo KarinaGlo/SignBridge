@@ -1,0 +1,34 @@
+concept_id,category,bisindo_gloss,fsl_gloss,id,fil,en,ref_video_bisindo,ref_video_fsl
+C01,Sapaan,HALO,HELLO,Halo,Kumusta,Hello,data/ref_signs/bisindo/HALO.mp4,data/ref_signs/fsl/HELLO.mp4
+C02,Sapaan,TERIMA_KASIH,THANK_YOU,Terima kasih,Salamat,Thank you,data/ref_signs/bisindo/TERIMA_KASIH.mp4,data/ref_signs/fsl/THANK_YOU.mp4
+C03,Sapaan,MAAF,SORRY,Maaf,Paumanhin,Sorry,data/ref_signs/bisindo/MAAF.mp4,data/ref_signs/fsl/SORRY.mp4
+C04,Sapaan,TOLONG,PLEASE_HELP,Tolong,Tulong,Please / Help,data/ref_signs/bisindo/TOLONG.mp4,data/ref_signs/fsl/PLEASE_HELP.mp4
+C05,Subjek,SAYA,ME,Saya,Ako,I / Me,data/ref_signs/bisindo/SAYA.mp4,data/ref_signs/fsl/ME.mp4
+C06,Subjek,KAMU,YOU,Kamu,Ikaw,You,data/ref_signs/bisindo/KAMU.mp4,data/ref_signs/fsl/YOU.mp4
+C07,Subjek,GURU,TEACHER,Guru,Guro,Teacher,data/ref_signs/bisindo/GURU.mp4,data/ref_signs/fsl/TEACHER.mp4
+C08,Subjek,TEMAN,FRIEND,Teman,Kaibigan,Friend,data/ref_signs/bisindo/TEMAN.mp4,data/ref_signs/fsl/FRIEND.mp4
+C09,Modalitas,MAU,WANT,Ingin,Gusto,Want,data/ref_signs/bisindo/MAU.mp4,data/ref_signs/fsl/WANT.mp4
+C10,Modalitas,SUDAH,ALREADY,Sudah,Tapos na,Already,data/ref_signs/bisindo/SUDAH.mp4,data/ref_signs/fsl/ALREADY.mp4
+C11,Modalitas,BELUM,NOT_YET,Belum,Hindi pa,Not yet,data/ref_signs/bisindo/BELUM.mp4,data/ref_signs/fsl/NOT_YET.mp4
+C12,Modalitas,BISA,CAN,Bisa,Kaya,Can,data/ref_signs/bisindo/BISA.mp4,data/ref_signs/fsl/CAN.mp4
+C13,Modalitas,TIDAK,NO,Tidak,Hindi,No / Not,data/ref_signs/bisindo/TIDAK.mp4,data/ref_signs/fsl/NO.mp4
+C14,Modalitas,ADA,HAVE,Ada,Mayroon,Have / There is,data/ref_signs/bisindo/ADA.mp4,data/ref_signs/fsl/HAVE.mp4
+C15,Aktivitas,BELAJAR,STUDY,Belajar,Mag-aral,Study,data/ref_signs/bisindo/BELAJAR.mp4,data/ref_signs/fsl/STUDY.mp4
+C16,Aktivitas,PAHAM,UNDERSTAND,Paham,Naiintindihan,Understand,data/ref_signs/bisindo/PAHAM.mp4,data/ref_signs/fsl/UNDERSTAND.mp4
+C17,Aktivitas,TANYA,ASK,Bertanya,Magtanong,Ask,data/ref_signs/bisindo/TANYA.mp4,data/ref_signs/fsl/ASK.mp4
+C18,Aktivitas,BACA,READ,Membaca,Magbasa,Read,data/ref_signs/bisindo/BACA.mp4,data/ref_signs/fsl/READ.mp4
+C19,Aktivitas,TULIS,WRITE,Menulis,Magsulat,Write,data/ref_signs/bisindo/TULIS.mp4,data/ref_signs/fsl/WRITE.mp4
+C20,Aktivitas,JAWAB,ANSWER,Menjawab,Sumagot,Answer,data/ref_signs/bisindo/JAWAB.mp4,data/ref_signs/fsl/ANSWER.mp4
+C21,Objek Kelas,BUKU,BOOK,Buku,Libro,Book,data/ref_signs/bisindo/BUKU.mp4,data/ref_signs/fsl/BOOK.mp4
+C22,Objek Kelas,TUGAS,ASSIGNMENT,Tugas,Takdang-aralin,Assignment,data/ref_signs/bisindo/TUGAS.mp4,data/ref_signs/fsl/ASSIGNMENT.mp4
+C23,Objek Kelas,KELAS,CLASS,Kelas,Klase,Class,data/ref_signs/bisindo/KELAS.mp4,data/ref_signs/fsl/CLASS.mp4
+C24,Objek Kelas,SEKOLAH,SCHOOL,Sekolah,Paaralan,School,data/ref_signs/bisindo/SEKOLAH.mp4,data/ref_signs/fsl/SCHOOL.mp4
+C25,Tanya,APA,WHAT,Apa,Ano,What,data/ref_signs/bisindo/APA.mp4,data/ref_signs/fsl/WHAT.mp4
+C26,Tanya,SIAPA,WHO,Siapa,Sino,Who,data/ref_signs/bisindo/SIAPA.mp4,data/ref_signs/fsl/WHO.mp4
+C27,Tanya,DIMANA,WHERE,Di mana,Saan,Where,data/ref_signs/bisindo/DIMANA.mp4,data/ref_signs/fsl/WHERE.mp4
+C28,Tanya,KAPAN,WHEN,Kapan,Kailan,When,data/ref_signs/bisindo/KAPAN.mp4,data/ref_signs/fsl/WHEN.mp4
+C29,Tanya,BAGAIMANA,HOW,Bagaimana,Paano,How,data/ref_signs/bisindo/BAGAIMANA.mp4,data/ref_signs/fsl/HOW.mp4
+C30,Evaluasi,BAIK,GOOD,Baik,Mabuti,Good,data/ref_signs/bisindo/BAIK.mp4,data/ref_signs/fsl/GOOD.mp4
+C31,Evaluasi,BENAR,CORRECT,Benar,Tama,Correct,data/ref_signs/bisindo/BENAR.mp4,data/ref_signs/fsl/CORRECT.mp4
+C32,Evaluasi,SALAH,WRONG,Salah,Mali,Wrong,data/ref_signs/bisindo/SALAH.mp4,data/ref_signs/fsl/WRONG.mp4
+
