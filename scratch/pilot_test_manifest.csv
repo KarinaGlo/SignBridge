@@ -1,0 +1,11 @@
+video_id,source,gloss,label,signer,kp_path,rgb_path,split_sd
+pilot_000,wl_bisindo,AIR,0,SIGNER0,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer0_label0_sample1.npz,,train
+pilot_001,wl_bisindo,BELAJAR,1,SIGNER0,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer0_label1_sample2.npz,,train
+pilot_002,wl_bisindo,CARI,2,SIGNER0,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer0_label2_sample4.npz,,train
+pilot_003,wl_bisindo,TERIMA_KASIH,10,SIGNER1,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer1_label10_sample5.npz,,train
+pilot_004,wl_bisindo,HARI,3,SIGNER1,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer1_label3_sample1.npz,,train
+pilot_005,wl_bisindo,DIMANA,15,SIGNER2,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer2_label15_sample1.npz,,train
+pilot_006,wl_bisindo,LAGI,5,SIGNER2,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer2_label5_sample3.npz,,train
+pilot_007,wl_bisindo,HIJAU,20,SIGNER3,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer3_label20_sample2.npz,,val
+pilot_008,wl_bisindo,TEMAN,25,SIGNER4,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer4_label25_sample4.npz,,val
+pilot_009,wl_bisindo,MALAM,31,SIGNER4,data/keypoints/pilot_wlbisindo/pilot_wl_bisindo_signer4_label31_sample1.npz,,test

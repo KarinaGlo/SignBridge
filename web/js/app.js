@@ -1,10 +1,8 @@
 /**
  * web/js/app.js
  * Pengendali utama antarmuka web SignBridge ASEAN (BISINDO <-> FSL Filipina + 26 Abjad A-Z).
- * Sinkron 100% dengan Database:
- *   - data/bridge/concepts.csv (32 Konsep Ruang Kelas BISINDO <-> FSL)
- *   - data/phonology.csv (Parameter Fonologi Bentuk Tangan, Lokasi, Gerakan, 1/2 Tangan)
- *   - web/model/fingerspell.json (26 Abjad Ejaan Jari A-Z)
+ * Sistem Desain SaaS Inklusif & Komprehensif — 100% Bahasa Indonesia.
+ * Sinkron dengan Model ONNX Runtime Web, MediaPipe Holistic, dan Server FastAPI.
  */
 
 import {
@@ -25,6 +23,8 @@ import { MultimodalRecorder } from "./recorder.js";
 
 class SignBridgeApp {
   constructor() {
+    this.currentView = "landing"; // "landing" | "app"
+    this.currentAppTab = "panel-translate"; // "panel-translate" | "panel-classroom" | ...
     this.bridgeDirection = "ID-PH";
     this.recognitionMode = "hybrid"; // "hybrid" | "video" | "fingerspell"
     this.autoSpeak = true;
@@ -33,6 +33,8 @@ class SignBridgeApp {
     this.currentSentence = "";
     this.practiceTarget = "SAYA";
     this.practiceStreak = 0;
+    this.captionSizeIndex = 0;
+    this.captionSizes = ["normal", "large", "xlarge"];
 
     this.recognizer = new SignRecognizer({
       onStateChange: (info) => this.updateStateBadge(info),
@@ -56,65 +58,194 @@ class SignBridgeApp {
   }
 
   async init() {
-    this.bindTabs();
-    this.bindHeaderControls();
+    this.bindNavigation();
+    this.bindLandingPageInteractions();
+    this.bindLiveTranslationControls();
     this.bindClassroomControls();
     this.bindBridgeControls();
     this.bindPracticeControls();
     this.bindRecorderControls();
+    this.bindAccessibilityAndSettings();
     this.renderConceptBoard("Semua");
 
     const recStatus = await this.recognizer.init();
     await this.fingerspeller.init();
-    const engineEl = document.getElementById("engine-status");
-    if (engineEl) {
-      engineEl.textContent =
-        recStatus.engine === "onnx-web"
-          ? "Database 32 BISINDO/FSL + 26 Abjad A-Z (ONNX Aktif)"
-          : "Database 32 BISINDO/FSL + 26 Abjad A-Z (Hibrida Aktif)";
+    const engineText = document.getElementById("engine-status-text");
+    const enginePill = document.getElementById("engine-status-pill");
+    if (engineText) {
+      if (recStatus.ready && recStatus.engine === "onnx-web") {
+        engineText.textContent = "ONNX Web M0 (Aktif - 32 WL-BISINDO)";
+      } else {
+        engineText.textContent = recStatus.error ? `Model M0 Standby: ${recStatus.error}` : "Model AI M0 Standby";
+        if (enginePill) {
+          enginePill.style.background = "var(--surface-sunken)";
+          enginePill.style.color = "var(--text-muted)";
+          enginePill.style.borderColor = "var(--border-subtle)";
+          const dot = enginePill.querySelector(".dot");
+          if (dot) {
+            dot.style.backgroundColor = "var(--status-warning)";
+            dot.style.boxShadow = "none";
+          }
+        }
+      }
     }
 
     this.playReferenceSign("HALO", "l3-canvas");
-    this.playReferenceSign("HALO", "hearing-sign-canvas");
+    this.playReferenceSign("SAYA", "practice-ref-canvas");
   }
 
-  bindTabs() {
-    const tabBtns = document.querySelectorAll("[data-tab-target]");
-    const panels = document.querySelectorAll(".tab-panel");
-    tabBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const target = btn.getAttribute("data-tab-target");
-        tabBtns.forEach((b) => b.classList.toggle("active", b === btn));
-        panels.forEach((p) => p.classList.toggle("active", p.id === target));
+  /* ==========================================================================
+     NAVIGASI UTAMA (LANDING PAGE <-> DASHBOARD APP SHELL)
+     ========================================================================== */
+  bindNavigation() {
+    // Tombol masuk ke App Shell dari Landing Page
+    const startBtns = [
+      document.getElementById("btn-landing-login"),
+      document.getElementById("btn-landing-start"),
+      document.getElementById("btn-hero-translate"),
+      document.getElementById("btn-bottom-start")
+    ];
+    startBtns.forEach((btn) => {
+      if (btn) {
+        btn.addEventListener("click", () => {
+          this.switchView("app");
+          this.switchAppTab("panel-translate");
+        });
+      }
+    });
+
+    const classBtns = [
+      document.getElementById("btn-hero-classroom"),
+      document.getElementById("btn-showcase-class")
+    ];
+    classBtns.forEach((btn) => {
+      if (btn) {
+        btn.addEventListener("click", () => {
+          this.switchView("app");
+          this.switchAppTab("panel-classroom");
+        });
+      }
+    });
+
+    // Link footer yang mengarah ke panel aplikasi
+    document.querySelectorAll(".nav-to-app").forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = link.getAttribute("data-target") || "panel-translate";
+        this.switchView("app");
+        this.switchAppTab(target);
       });
+    });
+
+    // Tombol kembali ke Landing Page
+    const backBtn = document.getElementById("btn-back-to-landing");
+    if (backBtn) {
+      backBtn.addEventListener("click", () => this.switchView("landing"));
+    }
+    const sidebarBrand = document.getElementById("sidebar-brand-click");
+    if (sidebarBrand) {
+      sidebarBrand.addEventListener("click", () => this.switchView("landing"));
+    }
+
+    // Navigasi Tab Sidebar Dashboard
+    const navItems = document.querySelectorAll("[data-app-tab]");
+    navItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        const tabTarget = item.getAttribute("data-app-tab");
+        this.switchAppTab(tabTarget);
+        this.closeMobileDrawer();
+      });
+    });
+
+    // Mobile Drawer Toggle
+    const mobileMenuBtn = document.getElementById("btn-mobile-menu");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (mobileMenuBtn) {
+      mobileMenuBtn.addEventListener("click", () => this.toggleMobileDrawer());
+    }
+    if (backdrop) {
+      backdrop.addEventListener("click", () => this.closeMobileDrawer());
+    }
+  }
+
+  switchView(viewName) {
+    this.currentView = viewName;
+    const landingView = document.getElementById("view-landing");
+    const appView = document.getElementById("view-app");
+
+    if (landingView && appView) {
+      landingView.classList.toggle("active", viewName === "landing");
+      appView.classList.toggle("active", viewName === "app");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  switchAppTab(tabId) {
+    this.currentAppTab = tabId;
+    const navItems = document.querySelectorAll("[data-app-tab]");
+    navItems.forEach((item) => {
+      item.classList.toggle("active", item.getAttribute("data-app-tab") === tabId);
+    });
+
+    const panels = document.querySelectorAll(".app-view-panel");
+    panels.forEach((p) => {
+      p.classList.toggle("active", p.id === tabId);
+    });
+
+    // Perbarui breadcrumb
+    const breadcrumbEl = document.getElementById("breadcrumb-current-view");
+    if (breadcrumbEl) {
+      const titleMap = {
+        "panel-translate": "Terjemahkan",
+        "panel-classroom": "Ruang Kelas",
+        "panel-sessions": "Riwayat Sesi",
+        "panel-guide": "Panduan Bahasa",
+        "panel-practice": "Latihan Mandiri",
+        "panel-recorder": "Perekam Dataset",
+        "panel-settings": "Pengaturan & Aksesibilitas"
+      };
+      breadcrumbEl.textContent = titleMap[tabId] || "Ruang Kerja";
+    }
+  }
+
+  toggleMobileDrawer() {
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.toggle("open");
+    if (backdrop) backdrop.classList.toggle("active");
+  }
+
+  closeMobileDrawer() {
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.remove("open");
+    if (backdrop) backdrop.classList.remove("active");
+  }
+
+  /* ==========================================================================
+     INTERAKSI LANDING PAGE (FAQ ACCORDION & PREVIEW)
+     ========================================================================== */
+  bindLandingPageInteractions() {
+    const faqItems = document.querySelectorAll(".faq-item");
+    faqItems.forEach((item) => {
+      const btn = item.querySelector(".faq-question");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          const isActive = item.classList.contains("active");
+          faqItems.forEach((f) => f.classList.remove("active"));
+          if (!isActive) item.classList.add("active");
+        });
+      }
     });
   }
 
-  bindHeaderControls() {
-    const dirSelect = document.getElementById("bridge-direction");
-    if (dirSelect) {
-      dirSelect.addEventListener("change", () => {
-        this.bridgeDirection = dirSelect.value;
-        const isFilTarget = this.bridgeDirection === "ID-PH";
-        this.speechListener.setLanguage(isFilTarget ? "id-ID" : "fil-PH");
-        this.refreshNaturalSentence();
-      });
-    }
-
-    const joinBtn = document.getElementById("btn-join-room");
-    const roomInput = document.getElementById("room-code-input");
-    if (joinBtn && roomInput) {
-      joinBtn.addEventListener("click", async () => {
-        const code = roomInput.value.trim() || RoomManager.generateCode();
-        roomInput.value = code;
-        await this.room.joinRoom(code);
-      });
-    }
-  }
-
-  bindClassroomControls() {
+  /* ==========================================================================
+     KONTROL TERJEMAHAN LANGSUNG (LIVE TRANSLATION)
+     ========================================================================== */
+  bindLiveTranslationControls() {
     const videoEl = document.getElementById("camera-video");
     const canvasEl = document.getElementById("camera-canvas");
+
     this.vision = new VisionManager({
       videoEl,
       canvasEl,
@@ -125,29 +256,29 @@ class SignBridgeApp {
         } else if (this.recognitionMode === "video") {
           this.recognizer.pushFrame(kp86, { hasVisibleHand });
         } else {
-          // Mode Gabungan (Hybrid):
-          // - Jika 2 tangan terlihat, atau tangan di kepala/mulut/dada, atau sedang bergerak -> 32 Kata BISINDO/FSL
-          // - Jika 1 tangan ditahan stabil di ruang netral samping -> dapat mengenali Abjad A-Z juga
           this.recognizer.pushFrame(kp86, { hasVisibleHand });
         }
       }
     });
 
     const camBtn = document.getElementById("btn-toggle-camera");
+    const camPill = document.getElementById("camera-state-pill");
     if (camBtn) {
       camBtn.addEventListener("click", async () => {
         unlockSpeechAudio();
         if (!this.vision.running) {
           const ok = await this.vision.startCamera();
-          camBtn.textContent = ok ? "Matikan Kamera" : "Simulasi Kamera (Tanpa Webcam)";
+          camBtn.textContent = ok ? "Matikan Kamera" : "Simulasi Kamera (Webcam Siap)";
+          if (camPill) camPill.textContent = ok ? "Kamera Aktif" : "Simulasi Kamera";
           if (ok) {
-            speakText("Kamera siap. Angkat tangan untuk mulai berisyarat.", "id-ID");
+            speakText("Kamera aktif. Angkat tangan untuk mulai berisyarat.", "id-ID");
           } else {
             this.simulateSignInput("SAYA");
           }
         } else {
           this.vision.stopCamera();
           camBtn.textContent = "Aktifkan Kamera";
+          if (camPill) camPill.textContent = "Kamera Nonaktif";
         }
       });
     }
@@ -165,52 +296,45 @@ class SignBridgeApp {
       modeSelect.value = this.recognitionMode;
       modeSelect.addEventListener("change", () => {
         this.recognitionMode = modeSelect.value;
-        const guideEl = document.getElementById("active-sign-guide");
-        if (guideEl) {
-          if (this.recognitionMode === "fingerspell") {
-            guideEl.innerHTML = `<strong>Mode Abjad A-Z Aktif:</strong> Tunjukkan 1 tangan dengan bentuk huruf A sampai Z di depan kamera (tahan ~0,4 detik).`;
-          } else {
-            guideEl.innerHTML = `<strong>Mode 32 Kata BISINDO &harr; FSL Aktif:</strong> Angkat tangan ke depan kamera untuk memperagakan kata isyarat sesuai database.`;
-          }
+      });
+    }
+
+    const clearBtn = document.getElementById("btn-clear-glosses");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        this.accumulatedGlosses = [];
+        this.spelledLetters = [];
+        this.currentSentence = "";
+        this.renderGlossSequence();
+        this.renderSpelledWord();
+        this.updateStateBadge({ state: SIGN_STATE.IDLE });
+      });
+    }
+
+    const micBtn = document.getElementById("btn-mic-listen");
+    if (micBtn) {
+      micBtn.addEventListener("click", () => {
+        if (this.speechListener.isListening) {
+          this.speechListener.stop();
+        } else {
+          this.speechListener.start();
         }
       });
     }
 
-    // Render seluruh 32 Kata Isyarat Database (BISINDO <-> FSL)
-    const quickContainer = document.getElementById("quick-gloss-buttons");
-    if (quickContainer) {
-      quickContainer.innerHTML = "";
-      CLASSROOM_CONCEPTS.forEach((c) => {
-        const chip = document.createElement("button");
-        chip.type = "button";
-        chip.className = "chip-btn";
-        chip.title = `${c.id_text} / ${c.fil_text} — ${c.guide}`;
-        chip.textContent = `${c.bisindo} (${c.fsl})`;
-        chip.addEventListener("click", () => {
-          unlockSpeechAudio();
-          this.simulateSignInput(c.bisindo);
-        });
-        quickContainer.appendChild(chip);
-      });
-    }
-
-    // Render seluruh 26 Abjad Ejaan Jari (A-Z) Database
-    const alphaContainer = document.getElementById("quick-alphabet-buttons");
-    if (alphaContainer) {
-      alphaContainer.innerHTML = "";
-      FINGERSPELL_DB.forEach((item) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "chip-btn";
-        btn.style.minWidth = "34px";
-        btn.style.fontWeight = "700";
-        btn.title = `Huruf ${item.letter}: ${item.guide}`;
-        btn.textContent = item.letter;
-        btn.addEventListener("click", () => {
-          unlockSpeechAudio();
-          this.simulateAlphabetInput(item.letter);
-        });
-        alphaContainer.appendChild(btn);
+    const sendHearingBtn = document.getElementById("btn-send-hearing");
+    const hearingInput = document.getElementById("hearing-text-input");
+    if (sendHearingBtn && hearingInput) {
+      const submitText = () => {
+        const txt = hearingInput.value.trim();
+        if (txt) {
+          this.handleSpeechResult({ text: txt, isFinal: true, engine: "Manual" });
+          hearingInput.value = "";
+        }
+      };
+      sendHearingBtn.addEventListener("click", submitText);
+      hearingInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submitText();
       });
     }
 
@@ -237,47 +361,55 @@ class SignBridgeApp {
       });
     }
 
-    const clearBtn = document.getElementById("btn-clear-glosses");
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => {
-        this.accumulatedGlosses = [];
-        this.spelledLetters = [];
-        this.currentSentence = "";
-        this.renderGlossSequence();
-        this.renderSpelledWord();
-        this.updateStateBadge({ state: SIGN_STATE.IDLE });
+    // Fullscreen kamera toggle
+    const fsBtn = document.getElementById("btn-fullscreen-camera");
+    if (fsBtn) {
+      fsBtn.addEventListener("click", () => {
+        const viewport = document.querySelector(".camera-viewport-wrap");
+        if (viewport) {
+          if (!document.fullscreenElement) {
+            viewport.requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
       });
     }
 
-    const speakBtn = document.getElementById("btn-speak-sentence");
-    if (speakBtn) {
-      speakBtn.addEventListener("click", () => {
-        unlockSpeechAudio();
-        this.speakCurrentSentence();
+    // Tombol Ubah Ukuran Teks Caption Cepat
+    const captionSizeBtn = document.getElementById("btn-adjust-caption-size");
+    if (captionSizeBtn) {
+      captionSizeBtn.addEventListener("click", () => {
+        this.captionSizeIndex = (this.captionSizeIndex + 1) % this.captionSizes.length;
+        const newSize = this.captionSizes[this.captionSizeIndex];
+        this.applyCaptionSize(newSize);
       });
     }
 
-    const micBtn = document.getElementById("btn-mic-listen");
-    if (micBtn) {
-      micBtn.addEventListener("click", () => {
-        if (this.speechListener.isListening) {
-          this.speechListener.stop();
-        } else {
+    // Mode Switcher Pills (Isyarat -> Teks & Suara / Suara -> Teks / Jembatan BISINDO <-> FSL)
+    const modeTabs = document.querySelectorAll("[data-translate-mode]");
+    modeTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        modeTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        const m = tab.getAttribute("data-translate-mode");
+        if (m === "speech" && !this.speechListener.isListening) {
           this.speechListener.start();
         }
       });
-    }
+    });
+  }
 
-    const sendHearingBtn = document.getElementById("btn-send-hearing");
-    const hearingInput = document.getElementById("hearing-text-input");
-    if (sendHearingBtn && hearingInput) {
-      sendHearingBtn.addEventListener("click", () => {
-        const txt = hearingInput.value.trim();
-        if (txt) {
-          this.handleSpeechResult({ text: txt, isFinal: true, engine: "Manual" });
-        }
-      });
-    }
+  applyCaptionSize(sizeName) {
+    const root = document.documentElement;
+    const sizeMap = {
+      normal: "1.15rem",
+      large: "1.5rem",
+      xlarge: "2rem"
+    };
+    root.style.setProperty("--caption-current-size", sizeMap[sizeName] || "1.15rem");
+    const selectEl = document.getElementById("setting-caption-size");
+    if (selectEl) selectEl.value = sizeName;
   }
 
   renderSpelledWord() {
@@ -302,6 +434,28 @@ class SignBridgeApp {
       sentence: text,
       direction: this.bridgeDirection
     });
+    this.appendConversationMessage("Ayu Putri (Anda)", "Tuli · BISINDO", text, "mine");
+  }
+
+  appendConversationMessage(sender, role, text, type = "normal") {
+    const list = document.getElementById("conversation-messages-list");
+    if (!list) return;
+
+    const timeStr = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${type === "mine" ? "mine" : ""}`;
+    bubble.innerHTML = `
+      <div class="chat-bubble-meta">
+        <span class="chat-bubble-author">${sender}</span>
+        <span>${timeStr}</span>
+      </div>
+      <div>${text}</div>
+      <div style="font-size:0.72rem; color:${type === "mine" ? "var(--teal-dark)" : "var(--text-secondary)"}; font-weight:600; margin-top:0.25rem;">
+        ${role}
+      </div>
+    `;
+    list.appendChild(bubble);
+    list.scrollTop = list.scrollHeight;
   }
 
   async simulateSignInput(glossName) {
@@ -310,7 +464,7 @@ class SignBridgeApp {
     if (canvasEl) {
       const ctx = canvasEl.getContext("2d");
       drawSkeleton86(ctx, seq[20], canvasEl.width, canvasEl.height, {
-        hudText: `PERAGA DATABASE 86 NODE: [${glossName}]`
+        hudText: `PERAGA DATABASE 86 TITIK: [${glossName}]`
       });
     }
     await this.recognizer.classifySequence(seq, glossName);
@@ -352,20 +506,9 @@ class SignBridgeApp {
       top3El.innerHTML = pred.top3
         .map(
           (item) =>
-            `<span class="pred-pill">Huruf ${item.letter} <strong>${Math.round(item.confidence * 100)}%</strong></span>`
+            `<span class="state-pill" style="font-size:0.75rem;">Huruf ${item.letter} <strong>${Math.round(item.confidence * 100)}%</strong></span>`
         )
         .join("");
-    }
-
-    const guideEl = document.getElementById("active-sign-guide");
-    if (guideEl) {
-      guideEl.innerHTML =
-        `<strong>Abjad Ejaan Jari [${letter}]:</strong> ${pred.guide || ""} ` +
-        `<span class="muted">(Contoh ID: ${pred.example_id || "-"} | PH: ${pred.example_fil || "-"})</span>`;
-    }
-
-    if (this.vision) {
-      this.vision.setHudText(`ABJAD TERDETEKSI: Huruf [${letter}] -> Ejaan: ${this.spelledLetters.join("")}`);
     }
 
     if (this.autoSpeak) {
@@ -386,35 +529,28 @@ class SignBridgeApp {
 
   async handleSignPrediction(pred) {
     const top3El = document.getElementById("top3-predictions");
-    if (top3El && pred && Array.isArray(pred.top3)) {
+    if (top3El && pred && Array.isArray(pred.top3) && pred.top3.length > 0) {
       top3El.innerHTML = pred.top3
         .map((item) => {
           const c = CLASSROOM_CONCEPTS.find((x) => x.bisindo === item.gloss);
           const fslTag = c ? ` / ${c.fsl}` : "";
-          return `<span class="pred-pill">${item.gloss}${fslTag} <strong>${Math.round(item.confidence * 100)}%</strong></span>`;
+          return `<span class="state-pill" style="font-size:0.75rem;">${item.gloss}${fslTag} <strong>${Math.round(item.confidence * 100)}%</strong></span>`;
         })
         .join("");
     }
 
-    if (pred && pred.gloss) {
+    if (pred && pred.success && pred.gloss) {
       const concept = CLASSROOM_CONCEPTS.find((c) => c.bisindo === pred.gloss);
-      const guideEl = document.getElementById("active-sign-guide");
-      if (guideEl && concept) {
-        guideEl.innerHTML =
-          `<strong>BISINDO: [${concept.bisindo}] ("${concept.id_text}") &harr; FSL Filipina: [${concept.fsl}] ("${concept.fil_text}")</strong><br/>` +
-          `<span>Panduan Gerakan Database: ${concept.guide}</span>`;
-      }
-
       await this.appendGloss(pred.gloss, pred.confidence || 0.90);
 
-      // Suarakan kata/kalimat sesuai arah bahasa (ID atau PH) tepat 1 kali untuk gerakan ini!
       if (this.autoSpeak) {
         const isID = this.bridgeDirection === "ID-PH";
         const wordToSpeak = concept ? (isID ? concept.id_text : concept.fil_text) : pred.gloss;
-        const textToSpeak =
-          this.accumulatedGlosses.length <= 3 ? this.currentSentence : wordToSpeak;
+        const textToSpeak = this.accumulatedGlosses.length <= 3 ? this.currentSentence : wordToSpeak;
         this.speakCurrentSentence(textToSpeak);
       }
+    } else if (pred && pred.error) {
+      console.warn("[App] Prediksi isyarat tidak berhasil:", pred.error);
     }
   }
 
@@ -438,7 +574,7 @@ class SignBridgeApp {
       const statusEl = document.getElementById("practice-feedback");
       if (streakEl) streakEl.textContent = String(this.practiceStreak);
       if (statusEl) {
-        statusEl.textContent = `Tepat! Isyarat ${cleanGloss} dikenali (${Math.round(confidence * 100)}%).`;
+        statusEl.textContent = `Tepat! Isyarat ${cleanGloss} berhasil dikenali (${Math.round(confidence * 100)}%).`;
       }
     }
   }
@@ -447,46 +583,30 @@ class SignBridgeApp {
     const container = document.getElementById("gloss-sequence-chips");
     if (!container) return;
     if (this.accumulatedGlosses.length === 0) {
-      container.innerHTML = `<span class="muted">Belum ada isyarat. Angkat tangan di depan kamera atau klik tombol kata/abjad di atas.</span>`;
+      container.innerHTML = `<span class="muted" style="font-size:0.82rem;">Belum ada isyarat terdeteksi.</span>`;
       const sentEl = document.getElementById("natural-sentence-output");
       if (sentEl) sentEl.textContent = "Menunggu deret isyarat...";
-      const bridgeEl = document.getElementById("classroom-bridge-output");
-      if (bridgeEl) bridgeEl.textContent = "";
       return;
     }
     container.innerHTML = this.accumulatedGlosses
       .map((g) => {
         const c = CLASSROOM_CONCEPTS.find((item) => item.bisindo === g);
-        return c ? `<span class="gloss-chip">[${c.bisindo} / ${c.fsl}]</span>` : `<span class="gloss-chip">[${g}]</span>`;
+        return c ? `<span class="state-pill live" style="font-size:0.75rem;">[${c.bisindo} / ${c.fsl}]</span>` : `<span class="state-pill" style="font-size:0.75rem;">[${g}]</span>`;
       })
       .join(" ");
   }
 
   async refreshNaturalSentence() {
     const sentEl = document.getElementById("natural-sentence-output");
-    const bridgeEl = document.getElementById("classroom-bridge-output");
     if (!sentEl || this.accumulatedGlosses.length === 0) return;
 
     const srcLang = this.bridgeDirection === "ID-PH" ? "id" : "fil";
-    const tgtLang = this.bridgeDirection === "ID-PH" ? "fil" : "id";
-
     const built = await buildNaturalSentence(this.accumulatedGlosses, {
       apiBaseUrl: APP_CONFIG.apiBaseUrl,
       lang: srcLang
     });
     this.currentSentence = built.text;
     sentEl.textContent = built.text;
-
-    if (bridgeEl) {
-      const translated = glossToSentenceLocal(this.accumulatedGlosses, tgtLang);
-      const fslSeq = this.accumulatedGlosses
-        .map((g) => CLASSROOM_CONCEPTS.find((c) => c.bisindo === g)?.fsl || g)
-        .join(" ");
-      bridgeEl.textContent =
-        tgtLang === "fil"
-          ? `FSL Filipina [${fslSeq}]: "${translated}"`
-          : `BISINDO Indonesia [${this.accumulatedGlosses.join(" ")}]: "${translated}"`;
-    }
   }
 
   handleSpeechResult({ text, isFinal }) {
@@ -496,107 +616,62 @@ class SignBridgeApp {
     }
     if (isFinal && text) {
       const concepts = sentenceToConceptGlosses(text);
-      const tokenContainer = document.getElementById("hearing-gloss-tokens");
-      if (tokenContainer) {
-        if (concepts.length === 0) {
-          tokenContainer.innerHTML = `<span class="muted">Teks ditampilkan penuh pada takarir kontras tinggi di atas.</span>`;
-        } else {
-          tokenContainer.innerHTML = concepts
-            .map(
-              (c) =>
-                `<button type="button" class="gloss-chip" data-play-gloss="${c.bisindo}">[${c.bisindo} / ${c.fsl}]</button>`
-            )
-            .join(" ");
-          tokenContainer.querySelectorAll("[data-play-gloss]").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              this.playReferenceSign(btn.getAttribute("data-play-gloss"), "hearing-sign-canvas");
-            });
-          });
-          this.playReferenceSign(concepts[0].bisindo, "hearing-sign-canvas");
-        }
-      }
       this.room.broadcast({
         type: "hearing_to_deaf",
         text,
         concepts: concepts.map((c) => c.bisindo)
       });
+      this.appendConversationMessage("Raka Pratama", "Dengar · Suara", text, "normal");
     }
   }
 
-  bindBridgeControls() {
-    const translateBtn = document.getElementById("btn-run-bridge");
-    const bridgeInput = document.getElementById("bridge-input-text");
-    if (translateBtn && bridgeInput) {
-      translateBtn.addEventListener("click", () => this.runThreeLayerBridge(bridgeInput.value));
+  /* ==========================================================================
+     KONTROL RUANG KELAS INKLUSIF
+     ========================================================================== */
+  bindClassroomControls() {
+    // Tombol Salin Kode Kelas
+    const copyBtn = document.getElementById("btn-copy-class-code");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText("BRIDGE-204").catch(() => {});
+        const span = copyBtn.querySelector("span");
+        if (span) {
+          const old = span.textContent;
+          span.textContent = "Disalin! ✓";
+          setTimeout(() => { span.textContent = old; }, 1800);
+        }
+      });
     }
 
+    // Tombol Berikan Kesempatan Bicara (Give Floor)
+    const floorBtn = document.getElementById("btn-give-floor");
+    if (floorBtn) {
+      floorBtn.addEventListener("click", () => {
+        floorBtn.textContent = "Kesempatan Diberikan! ✓";
+        floorBtn.classList.remove("btn-primary");
+        floorBtn.classList.add("btn-outline");
+        speakText("Ayu Putri, silakan menyampaikan isyarat kepada kelas.", "id-ID");
+        setTimeout(() => {
+          floorBtn.textContent = "Berikan Kesempatan";
+          floorBtn.classList.add("btn-primary");
+          floorBtn.classList.remove("btn-outline");
+        }, 3000);
+      });
+    }
+  }
+
+  /* ==========================================================================
+     PANDUAN BAHASA & FONOLOGI
+     ========================================================================== */
+  bindBridgeControls() {
     const filterBtns = document.querySelectorAll("[data-concept-filter]");
     filterBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
-        filterBtns.forEach((b) => b.classList.toggle("active", b === btn));
+        filterBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
         this.renderConceptBoard(btn.getAttribute("data-concept-filter"));
       });
     });
-  }
-
-  async runThreeLayerBridge(rawText) {
-    const query = String(rawText || "").trim();
-    if (!query) return;
-
-    const src = this.bridgeDirection === "ID-PH" ? "id" : "fil";
-    const tgt = this.bridgeDirection === "ID-PH" ? "fil" : "id";
-
-    const matchedConcepts = sentenceToConceptGlosses(query);
-    const l1El = document.getElementById("bridge-l1-output");
-    if (l1El) {
-      if (matchedConcepts.length > 0) {
-        l1El.innerHTML = matchedConcepts
-          .map(
-            (c) =>
-              `<div class="concept-match"><strong>${c.id}</strong>: BISINDO <code>${c.bisindo}</code> (${c.id_text}) &leftrightarrow; FSL <code>${c.fsl}</code> (${c.fil_text})</div>`
-          )
-          .join("");
-      } else {
-        l1El.textContent = "Tidak ada kecocokan leksikon langsung pada L1; diteruskan ke L2 Neural MT.";
-      }
-    }
-
-    const l2El = document.getElementById("bridge-l2-output");
-    const badgeEl = document.getElementById("bridge-layer-badge");
-    let translatedText = "";
-    let layerUsed = "L1-Fallback";
-
-    try {
-      const resp = await fetch(`${APP_CONFIG.apiBaseUrl}/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: query, src, tgt })
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        translatedText = data.translation || "";
-        layerUsed = data.layer_used || "L2-Neural";
-      }
-    } catch (_e) {}
-
-    if (!translatedText) {
-      if (matchedConcepts.length > 0) {
-        const glosses = matchedConcepts.map((c) => c.bisindo);
-        translatedText = glossToSentenceLocal(glosses, tgt);
-        layerUsed = "L1-Concept-Offline";
-      } else {
-        translatedText = query;
-        layerUsed = "L1-Fallback";
-      }
-    }
-
-    if (l2El) l2El.textContent = translatedText;
-    if (badgeEl) badgeEl.textContent = layerUsed;
-
-    speakText(translatedText, tgt === "fil" ? "fil-PH" : "id-ID");
-
-    const targetGloss = matchedConcepts.length > 0 ? matchedConcepts[0].bisindo : "HALO";
-    this.playReferenceSign(targetGloss, "l3-canvas");
   }
 
   renderConceptBoard(categoryFilter = "Semua") {
@@ -606,20 +681,18 @@ class SignBridgeApp {
     if (categoryFilter === "Abjad") {
       grid.innerHTML = FINGERSPELL_DB.map(
         (item, idx) => `
-        <article class="concept-card" data-concept-gloss="${item.letter}">
+        <article class="concept-card">
           <div class="concept-card-header">
-            <span class="concept-id">A${String(idx + 1).padStart(2, "0")} · Ejaan Jari</span>
             <span class="concept-gloss">Huruf ${item.letter}</span>
+            <span class="concept-category-badge">Ejaan Jari A${String(idx + 1).padStart(2, "0")}</span>
           </div>
-          <div class="concept-langs">
-            <div><span class="flag">ID</span> Contoh: <strong>${item.example_id}</strong></div>
-            <div><span class="flag">PH</span> Contoh: <strong>${item.example_fil}</strong></div>
-            <div class="muted" style="font-size:0.8rem; margin-top:0.25rem;">${item.guide}</div>
+          <p style="font-size:0.84rem; color:var(--text-secondary); margin-bottom:0.5rem;">${item.guide}</p>
+          <div style="font-size:0.8rem; display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+            <span>ID: <strong>${item.example_id}</strong></span> · <span>PH: <strong>${item.example_fil}</strong></span>
           </div>
-          <div class="concept-actions">
-            <button type="button" class="btn-sm" data-speak-id="Huruf ${item.letter}, ${item.example_id}">Suara ID</button>
-            <button type="button" class="btn-sm" data-speak-fil="${item.letter}, ${item.example_fil}">Suara PH</button>
-            <button type="button" class="btn-sm btn-accent" data-preview-sign="${item.letter}">Peraga L3</button>
+          <div style="display:flex; gap:0.4rem;">
+            <button type="button" class="btn btn-outline btn-sm" data-speak-id="Huruf ${item.letter}, ${item.example_id}">Suara</button>
+            <button type="button" class="btn btn-primary btn-sm" data-preview-sign="${item.letter}">Peraga L3</button>
           </div>
         </article>`
       ).join("");
@@ -632,21 +705,19 @@ class SignBridgeApp {
       grid.innerHTML = items
         .map(
           (c) => `
-          <article class="concept-card" data-concept-gloss="${c.bisindo}">
+          <article class="concept-card">
             <div class="concept-card-header">
-              <span class="concept-id">${c.id} · ${c.category}</span>
               <span class="concept-gloss">${c.bisindo} / ${c.fsl}</span>
+              <span class="concept-category-badge">${c.category}</span>
+              ${c.supported !== false ? '<span class="state-pill live" style="font-size:0.7rem; margin-left:auto;">Didukung M0</span>' : '<span class="state-pill" style="font-size:0.7rem; margin-left:auto; background:var(--surface-sunken); color:var(--text-muted);">Roadmap M2</span>'}
             </div>
-            <div class="concept-langs">
-              <div><span class="flag">ID</span> <strong>${c.id_text}</strong></div>
-              <div><span class="flag">PH</span> <strong>${c.fil_text}</strong></div>
-              <div class="muted"><span class="flag">EN</span> ${c.en_text}</div>
-              <div class="muted" style="font-size:0.78rem; margin-top:0.25rem;"><strong>Gerakan:</strong> ${c.guide}</div>
-            </div>
-            <div class="concept-actions">
-              <button type="button" class="btn-sm" data-speak-id="${c.id_text}">Suara ID</button>
-              <button type="button" class="btn-sm" data-speak-fil="${c.fil_text}">Suara PH</button>
-              <button type="button" class="btn-sm btn-accent" data-preview-sign="${c.bisindo}">Peraga L3</button>
+            <p style="font-size:0.88rem; font-weight:700; color:var(--teal-dark); margin-bottom:0.25rem;">
+              "${c.id_text}" &harr; "${c.fil_text}"
+            </p>
+            <p style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4; margin-bottom:0.5rem;">${c.guide}</p>
+            <div style="display:flex; gap:0.4rem; margin-top:auto;">
+              <button type="button" class="btn btn-outline btn-sm" data-speak-id="${c.id_text}">Suara</button>
+              <button type="button" class="btn btn-primary btn-sm" data-preview-sign="${c.bisindo}">Peraga L3</button>
             </div>
           </article>`
         )
@@ -656,32 +727,35 @@ class SignBridgeApp {
     grid.querySelectorAll("[data-speak-id]").forEach((btn) => {
       btn.addEventListener("click", () => speakText(btn.getAttribute("data-speak-id"), "id-ID"));
     });
-    grid.querySelectorAll("[data-speak-fil]").forEach((btn) => {
-      btn.addEventListener("click", () => speakText(btn.getAttribute("data-speak-fil"), "fil-PH"));
-    });
     grid.querySelectorAll("[data-preview-sign]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const g = btn.getAttribute("data-preview-sign");
         this.playReferenceSign(g, "l3-canvas");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
   }
 
+  /* ==========================================================================
+     LATIHAN MANDIRI & PEREKAM
+     ========================================================================== */
   bindPracticeControls() {
     const selectEl = document.getElementById("practice-target-select");
     if (selectEl) {
-      const glossOpts = CLASSROOM_CONCEPTS.map(
-        (c) => `<option value="${c.bisindo}">Kata: ${c.bisindo} / ${c.fsl} (${c.id_text} - ${c.fil_text})</option>`
+      const m0Opts = CLASSROOM_CONCEPTS.filter((c) => c.supported !== false).map(
+        (c) => `<option value="${c.bisindo}">M0: ${c.bisindo} / ${c.fsl} (${c.id_text})</option>`
+      ).join("");
+      const extOpts = CLASSROOM_CONCEPTS.filter((c) => c.supported === false).map(
+        (c) => `<option value="${c.bisindo}" disabled>Roadmap M2: ${c.bisindo} / ${c.fsl} (${c.id_text})</option>`
       ).join("");
       const alphaOpts = FINGERSPELL_DB.map(
         (a) => `<option value="${a.letter}">Abjad: Huruf ${a.letter} (${a.guide})</option>`
       ).join("");
-      selectEl.innerHTML = `<optgroup label="32 Kata BISINDO <-> FSL">${glossOpts}</optgroup><optgroup label="26 Abjad Ejaan Jari (A-Z)">${alphaOpts}</optgroup>`;
+      selectEl.innerHTML = `<optgroup label="32 Kata Utama Didukung Model M0">${m0Opts}</optgroup><optgroup label="26 Abjad Ejaan Jari (A-Z)">${alphaOpts}</optgroup><optgroup label="Konsep Kelas Lainnya (Target Roadmap M2)">${extOpts}</optgroup>`;
       selectEl.value = this.practiceTarget;
       selectEl.addEventListener("change", () => {
         this.practiceTarget = selectEl.value;
         this.playReferenceSign(this.practiceTarget, "practice-ref-canvas");
-        this.updatePracticeInstruction();
       });
     }
 
@@ -693,7 +767,6 @@ class SignBridgeApp {
         this.practiceTarget = allTargets[idx];
         selectEl.value = this.practiceTarget;
         this.playReferenceSign(this.practiceTarget, "practice-ref-canvas");
-        this.updatePracticeInstruction();
       });
     }
 
@@ -707,24 +780,6 @@ class SignBridgeApp {
           this.simulateSignInput(this.practiceTarget);
         }
       });
-    }
-    this.playReferenceSign(this.practiceTarget, "practice-ref-canvas");
-    this.updatePracticeInstruction();
-  }
-
-  updatePracticeInstruction() {
-    const statusEl = document.getElementById("practice-feedback");
-    if (!statusEl) return;
-    if (this.practiceTarget.length === 1) {
-      const info = FINGERSPELL_DB.find((x) => x.letter === this.practiceTarget);
-      statusEl.textContent = info
-        ? `Target Abjad [${info.letter}]: ${info.guide}`
-        : `Peragakan Abjad ${this.practiceTarget}`;
-    } else {
-      const c = CLASSROOM_CONCEPTS.find((x) => x.bisindo === this.practiceTarget);
-      statusEl.textContent = c
-        ? `Target [${c.bisindo} / ${c.fsl}] (${c.id_text} / ${c.fil_text}): ${c.guide}`
-        : `Peragakan Isyarat ${this.practiceTarget}`;
     }
   }
 
@@ -750,35 +805,14 @@ class SignBridgeApp {
         const signer = document.getElementById("rec-signer")?.value || "S01";
         const category = catSelect?.value || "gloss";
         const target = targetSelect?.value || "HALO";
-        const liveBuffer =
-          this.vision?.running && Array.isArray(this.recognizer?.buffer) && this.recognizer.buffer.length >= 8
-            ? this.recognizer.buffer.slice(-64)
-            : null;
-        const kpSeq = liveBuffer || generateReferenceSignKeypoints(target, 64);
-        const clip = this.recorder.addClip({
+        const kpSeq = generateReferenceSignKeypoints(target, 64);
+        this.recorder.addClip({
           signer,
           category,
           target,
           keypoints: kpSeq,
           sentence: glossToSentenceLocal([target], "id")
         });
-        const rep = this.recorder.clips.length;
-        const recCode = clip?.clipId || clip?.clip_id || `SBK_${signer}_${target}_${String(rep).padStart(3, "0")}`;
-        fetch(`${APP_CONFIG.apiBaseUrl}/db/recordings`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recording_code: recCode,
-            signer_id: signer,
-            gloss: target,
-            repetition: rep,
-            duration: 2.6,
-            file_path: `data/raw/selfrec/${recCode}.webm`,
-            keypoint_path: `data/keypoints/selfrec/${recCode}.npz`,
-            consent_status: "approved",
-            validation_status: "valid"
-          })
-        }).catch(() => {});
         if (countEl) countEl.textContent = String(this.recorder.clips.length);
         speakText(`Klip ${target} tersimpan`, "id-ID");
       });
@@ -807,6 +841,53 @@ class SignBridgeApp {
     }
   }
 
+  /* ==========================================================================
+     PENGATURAN & AKSESIBILITAS
+     ========================================================================== */
+  bindAccessibilityAndSettings() {
+    const sizeSelect = document.getElementById("setting-caption-size");
+    if (sizeSelect) {
+      sizeSelect.addEventListener("change", () => this.applyCaptionSize(sizeSelect.value));
+    }
+
+    const contrastCheck = document.getElementById("setting-high-contrast");
+    if (contrastCheck) {
+      contrastCheck.addEventListener("change", () => {
+        document.body.classList.toggle("high-contrast", contrastCheck.checked);
+      });
+    }
+
+    const motionCheck = document.getElementById("setting-reduced-motion");
+    if (motionCheck) {
+      motionCheck.addEventListener("change", () => {
+        document.documentElement.style.setProperty(
+          "--trans-normal",
+          motionCheck.checked ? "0.01ms" : "0.28s cubic-bezier(0.16, 1, 0.3, 1)"
+        );
+      });
+    }
+
+    const autoTtsCheck = document.getElementById("setting-auto-tts");
+    if (autoTtsCheck) {
+      autoTtsCheck.addEventListener("change", () => {
+        this.autoSpeak = autoTtsCheck.checked;
+        const mainChk = document.getElementById("chk-auto-speak");
+        if (mainChk) mainChk.checked = this.autoSpeak;
+      });
+    }
+
+    const sensSlider = document.getElementById("setting-sensitivity");
+    if (sensSlider) {
+      sensSlider.addEventListener("input", () => {
+        const val = parseFloat(sensSlider.value);
+        if (this.recognizer) this.recognizer.minConfidence = val;
+      });
+    }
+  }
+
+  /* ==========================================================================
+     CANVAS PERAGA KERANGKA L3
+     ========================================================================== */
   playReferenceSign(glossName, canvasId) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -839,40 +920,35 @@ class SignBridgeApp {
     const badge = document.getElementById("sign-state-badge");
     if (!badge) return;
     const labelMap = {
-      IDLE: "Menunggu Tangan (Idle)",
+      IDLE: "Mengenali Isyarat (Idle)",
       RECORDING: `Merekam Gerakan (${frames || 1} frame)`,
       CLASSIFYING: "Mencocokkan Database...",
       SENTENCE: "Isyarat Dikenali",
       SPEAKING: "Menyuarakan (TTS)"
     };
     badge.textContent = labelMap[state] || state;
-    badge.setAttribute("data-state", state);
   }
 
-  updateRoomBadge({ connected, roomCode, transport }) {
-    const el = document.getElementById("room-status-badge");
+  updateRoomBadge({ connected, roomCode }) {
+    const el = document.getElementById("topbar-room-info");
     if (!el) return;
-    el.textContent = connected ? `Ruang #${roomCode} (${transport})` : "Lokal (1 Perangkat)";
+    el.innerHTML = connected ? `<span>Ruang #${roomCode}</span>` : `<span>Ruang Demo</span>`;
   }
 
-  updateMicButton({ listening, engine }) {
+  updateMicButton({ listening }) {
     const btn = document.getElementById("btn-mic-listen");
     if (!btn) return;
-    btn.textContent = listening ? `Mendengarkan (${engine})...` : "Mulai Bicara (STT)";
-    btn.classList.toggle("active", Boolean(listening));
+    btn.textContent = listening ? "Mendengarkan Suara..." : "Mikrofon Aktif";
+    btn.classList.toggle("btn-primary", Boolean(listening));
+    btn.classList.toggle("btn-outline", !listening);
   }
 
   handleRoomMessage(msg) {
     if (!msg) return;
     if (msg.type === "deaf_to_hearing" && msg.sentence) {
-      const capEl = document.getElementById("giant-caption");
-      if (capEl) capEl.textContent = `[Siswa Tuli]: ${msg.sentence}`;
+      this.appendConversationMessage("Siswa Tuli (Jarak Jauh)", "BISINDO", msg.sentence, "normal");
     } else if (msg.type === "hearing_to_deaf" && msg.text) {
-      const capEl = document.getElementById("giant-caption");
-      if (capEl) capEl.textContent = msg.text;
-      if (Array.isArray(msg.concepts) && msg.concepts.length > 0) {
-        this.playReferenceSign(msg.concepts[0], "hearing-sign-canvas");
-      }
+      this.appendConversationMessage("Rekan Dengar (Jarak Jauh)", "Suara Indonesia", msg.text, "normal");
     }
   }
 }

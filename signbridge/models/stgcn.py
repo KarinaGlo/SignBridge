@@ -99,7 +99,9 @@ class STGCNBlock(nn.Module):
 
 class STGCNEncoder(nn.Module):
     """
-    6-Block ST-GCN Encoder mapping [B, 64, 86, 3] -> 16 temporal tokens of dim 256 ([B, 16, 256]).
+    ST-GCN Encoder mapping [B, 64, 86, 3] -> temporal tokens of dim 256 ([B, 16, 256]).
+    Supports 4-block (lightweight channel progression 64->64->128->256) or 6-block architecture,
+    with explicit valid_mask handling to prevent missing landmark noise.
     """
 
     def __init__(
@@ -107,9 +109,11 @@ class STGCNEncoder(nn.Module):
         hidden_dim: int = 256,
         dropout: float = 0.1,
         num_nodes: int = NUM_KEYPOINTS,
+        num_blocks: int = 4,
     ) -> None:
         super().__init__()
         self.hidden_dim = hidden_dim
+        self.num_blocks = num_blocks
         A_np = build_adjacency(num_nodes)
         A = torch.from_numpy(A_np)
 
@@ -120,25 +124,49 @@ class STGCNEncoder(nn.Module):
         c3 = hidden_dim
 
         self.data_bn = nn.BatchNorm1d(in_ch * num_nodes)
-        self.blocks = nn.ModuleList(
-            [
-                STGCNBlock(in_ch, c1, A, stride=1, dropout=dropout),
-                STGCNBlock(c1, c1, A, stride=1, dropout=dropout),
-                STGCNBlock(c1, c2, A, stride=2, dropout=dropout),  # T: 64 -> 32
-                STGCNBlock(c2, c2, A, stride=1, dropout=dropout),
-                STGCNBlock(c2, c3, A, stride=2, dropout=dropout),  # T: 32 -> 16
-                STGCNBlock(c3, c3, A, stride=1, dropout=dropout),
-            ]
-        )
+        if num_blocks == 4:
+            # 4-block progression: 64 -> 64 -> 128 -> 256
+            self.blocks = nn.ModuleList(
+                [
+                    STGCNBlock(in_ch, c1, A, stride=1, dropout=dropout),   # T: 64 -> 64
+                    STGCNBlock(c1, c1, A, stride=2, dropout=dropout),     # T: 64 -> 32
+                    STGCNBlock(c1, c2, A, stride=2, dropout=dropout),     # T: 32 -> 16
+                    STGCNBlock(c2, c3, A, stride=1, dropout=dropout),     # T: 16 -> 16
+                ]
+            )
+        else:
+            # 6-block progression: 64 -> 64 -> 128 -> 128 -> 256 -> 256
+            self.blocks = nn.ModuleList(
+                [
+                    STGCNBlock(in_ch, c1, A, stride=1, dropout=dropout),
+                    STGCNBlock(c1, c1, A, stride=1, dropout=dropout),
+                    STGCNBlock(c1, c2, A, stride=2, dropout=dropout),  # T: 64 -> 32
+                    STGCNBlock(c2, c2, A, stride=1, dropout=dropout),
+                    STGCNBlock(c2, c3, A, stride=2, dropout=dropout),  # T: 32 -> 16
+                    STGCNBlock(c3, c3, A, stride=1, dropout=dropout),
+                ]
+            )
 
-    def forward_tokens(self, pose: torch.Tensor) -> torch.Tensor:
+    def forward_tokens(
+        self,
+        pose: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         pose: [B, T=64, V=86, 3] -> tokens: [B, 16, hidden_dim]
+        mask: [B, T=64, V=86] (optional boolean valid mask)
         """
         B, T, V, C = pose.shape
-        # Compute frame-to-frame velocity dx_t = x_t - x_{t-1}
         vel = torch.zeros_like(pose)
-        vel[:, 1:] = pose[:, 1:] - pose[:, :-1]
+        if mask is not None:
+            # Mask invalid landmarks so missing coordinates stay strictly 0
+            pose = pose * mask.unsqueeze(-1).float()
+            # Valid velocity only when both consecutive frames are valid
+            valid_vel = mask[:, 1:] & mask[:, :-1]
+            vel[:, 1:] = (pose[:, 1:] - pose[:, :-1]) * valid_vel.unsqueeze(-1).float()
+        else:
+            vel[:, 1:] = pose[:, 1:] - pose[:, :-1]
+
         x = torch.cat([pose, vel], dim=-1)  # [B, T, V, 6]
 
         # Rearrange to [B, C*V, T] for BatchNorm1d, then [B, C, T, V]
@@ -147,16 +175,32 @@ class STGCNEncoder(nn.Module):
         x = self.data_bn(x)
         x = x.view(B, 6, V, T).permute(0, 1, 3, 2).contiguous()  # [B, 6, T, V]
 
+        if mask is not None:
+            # Re-apply mask so inactive nodes do not carry non-zero BatchNorm bias
+            x = x * mask.unsqueeze(1).float()
+
         for blk in self.blocks:
             x = blk(x)  # [B, hidden_dim, 16, V]
 
-        # Average over spatial nodes V -> [B, 16, hidden_dim]
-        tokens = x.mean(dim=-1).transpose(1, 2).contiguous()
+        if mask is not None:
+            # Masked node average to prevent unobserved nodes (e.g. passive left hand)
+            # from diluting the active landmark signal
+            node_mask = mask.any(dim=1).unsqueeze(1).float()  # [B, 1, V]
+            denom = node_mask.sum(dim=-1, keepdim=True).clamp(min=1.0)
+            tokens = (x * node_mask.unsqueeze(2)).sum(dim=-1) / denom  # [B, C, T]
+            tokens = tokens.transpose(1, 2).contiguous()  # [B, T, C]
+        else:
+            # Average over spatial nodes V -> [B, 16, hidden_dim]
+            tokens = x.mean(dim=-1).transpose(1, 2).contiguous()
         return tokens
 
-    def forward(self, pose: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        pose: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """Return temporally pooled feature p_bar [B, hidden_dim]."""
-        tokens = self.forward_tokens(pose)
+        tokens = self.forward_tokens(pose, mask=mask)
         return tokens.mean(dim=1)
 
 
@@ -190,18 +234,24 @@ class PhonologyMultitaskHead(nn.Module):
 class PoseModel(nn.Module):
     """
     M1 (E1/E2/E3) & X1-X3 Pose-Only ST-GCN Classifier with optional Phonology Multitask Head.
+    Supports valid_mask handling and 4-block / 6-block configurations.
     """
 
     def __init__(
         self,
         num_classes: int = 32,
         hidden_dim: int = 256,
-        dropout: float = 0.2,
+        dropout: float = 0.1,
+        num_blocks: int = 4,
         use_phonology: bool = False,
         phono_num_classes: Optional[Dict[str, int]] = None,
     ) -> None:
         super().__init__()
-        self.encoder = STGCNEncoder(hidden_dim=hidden_dim, dropout=dropout)
+        self.encoder = STGCNEncoder(
+            hidden_dim=hidden_dim,
+            dropout=dropout,
+            num_blocks=num_blocks,
+        )
         self.dropout = nn.Dropout(dropout)
         self.classifier = nn.Linear(hidden_dim, num_classes)
         self.use_phonology = bool(use_phonology)
@@ -211,12 +261,23 @@ class PoseModel(nn.Module):
             else None
         )
 
+    def forward_logits(
+        self,
+        pose: torch.Tensor,
+        mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Direct tensor forward returning logits [B, num_classes]."""
+        tokens = self.encoder.forward_tokens(pose, mask=mask)
+        pooled = self.dropout(tokens.mean(dim=1))
+        return self.classifier(pooled)
+
     def forward(
         self,
         pose: torch.Tensor,
         rgb: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
     ) -> Dict[str, Optional[torch.Tensor | List[torch.Tensor]]]:
-        tokens = self.encoder.forward_tokens(pose)  # [B, 16, D]
+        tokens = self.encoder.forward_tokens(pose, mask=mask)  # [B, 16, D]
         pooled = self.dropout(tokens.mean(dim=1))   # [B, D]
         logits = self.classifier(pooled)
         phono_logits = self.phono_head(pooled) if self.phono_head is not None else None

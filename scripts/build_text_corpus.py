@@ -146,9 +146,72 @@ def generate_classroom_sentences() -> list[str]:
     return sentences
 
 
-def build_all_text_and_audio_data(root_dir: Path = ROOT) -> dict[str, int]:
+def verify_existing_text_corpus(root_dir: Path = ROOT) -> dict[str, int]:
+    """
+    Validasi berkas korpus teks (`train.tsv`, `val.tsv`, `test_manual.tsv`, `kelas_sentences.txt`,
+    dan opsional `tatoeba/ind_sentences.tsv`) tanpa menimpa berkas asli.
+    Memastikan tidak ada kebocoran data dari `test_manual.tsv` ke `train.tsv` maupun `val.tsv`,
+    serta tidak memperlakukan Tatoeba sebagai pasangan `gloss-to-sentence`.
+    """
+    from signbridge.text.train_text import load_and_verify_text_splits, load_monolingual_tatoeba_tsv
+
+    root_dir = Path(root_dir)
+    text_dir = root_dir / "data" / "text"
+    splits = load_and_verify_text_splits(
+        train_path=text_dir / "train.tsv",
+        val_path=text_dir / "val.tsv",
+        test_path=text_dir / "test_manual.tsv",
+    )
+
+    sentences_txt = text_dir / "kelas_sentences.txt"
+    if not sentences_txt.exists() or not sentences_txt.is_file():
+        raise FileNotFoundError(f"Berkas kalimat kelas tidak ditemukan: {sentences_txt}")
+    kelas_lines = [ln.strip() for ln in sentences_txt.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if not kelas_lines:
+        raise ValueError(f"Berkas kalimat kelas kosong: {sentences_txt}")
+
+    test_sents_lower = {s.strip().lower() for _, s in splits["test"]}
+    overlap_kelas = test_sents_lower.intersection({s.lower() for s in kelas_lines})
+    if overlap_kelas:
+        raise ValueError(
+            f"Kebocoran data terdeteksi antara test_manual.tsv dan kelas_sentences.txt: "
+            f"{len(overlap_kelas)} kalimat beririsan."
+        )
+
+    tatoeba_tsv = text_dir / "tatoeba" / "ind_sentences.tsv"
+    tatoeba_count = 0
+    if tatoeba_tsv.exists():
+        tatoeba_records = load_monolingual_tatoeba_tsv(tatoeba_tsv)
+        tatoeba_count = len(tatoeba_records)
+
+    return {
+        "manual_test": len(splits["test"]),
+        "train": len(splits["train"]),
+        "val": len(splits["val"]),
+        "sentences": len(kelas_lines),
+        "tatoeba_monolingual": tatoeba_count,
+    }
+
+
+def build_all_text_and_audio_data(root_dir: Path = ROOT, overwrite: bool = False) -> dict[str, int]:
+    """
+    Jika berkas korpus teks sudah tersedia dan `overwrite=False` (default), jangan menimpa
+    berkas asli melainkan lakukan verifikasi integritas & kebocoran split.
+    """
+    root_dir = Path(root_dir)
     text_dir = root_dir / "data" / "text"
     audio_dir = root_dir / "data" / "audio"
+
+    protected_files = [
+        text_dir / "train.tsv",
+        text_dir / "val.tsv",
+        text_dir / "test_manual.tsv",
+        text_dir / "kelas_sentences.txt",
+        audio_dir / "metadata.csv",
+    ]
+    if not overwrite and all(p.exists() for p in protected_files):
+        return verify_existing_text_corpus(root_dir)
+
     text_dir.mkdir(parents=True, exist_ok=True)
     audio_dir.mkdir(parents=True, exist_ok=True)
 
@@ -224,11 +287,16 @@ def build_all_text_and_audio_data(root_dir: Path = ROOT) -> dict[str, int]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Bangun korpus teks & metadata audio SignBridge.")
+    parser = argparse.ArgumentParser(description="Validasi atau bangun korpus teks & metadata audio SignBridge.")
     parser.add_argument("--root", type=str, default=str(ROOT), help="Root direktori repositori")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Timpa berkas TSV/CSV yang sudah ada (default: False, hanya verifikasi)",
+    )
     args = parser.parse_args()
-    stats = build_all_text_and_audio_data(Path(args.root))
-    print(f"Korpus teks & audio berhasil dibangun: {stats}")
+    stats = build_all_text_and_audio_data(Path(args.root), overwrite=args.overwrite)
+    print(f"[build_text_corpus] Korpus teks & audio tervalidasi: {stats}")
 
 
 if __name__ == "__main__":
