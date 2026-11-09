@@ -1,0 +1,58 @@
+dataset:
+  manifest: data/manifest_wl_bisindo.csv
+  name: WL-BISINDO
+  num_classes: 32
+  num_keypoints: 86
+  seq_len: 64
+  sidecar: data/manifest_wl_bisindo_source_metadata.csv
+  splits:
+    test: 460
+    train: 960
+    val: 180
+  total_samples: 1600
+experiment_id: M1_stgcn_baseline
+hardware:
+  cpu_architecture: AMD64
+  cpu_threads: 6
+  device: CPU
+  host_gpu: NVIDIA GeForce RTX 3050 (6GB) - Evaluated, CPU selected per project spec
+  python_version: 3.11.0b4 (main, Jul 11 2022, 15:47:56) [MSC v.1932 64 bit (AMD64)]
+model:
+  channel_progression:
+  - 64
+  - 64
+  - 128
+  - 256
+  dropout: 0.1
+  hidden_dim: 256
+  num_blocks: 4
+  residual: true
+  spatial_adjacency: 3-partition normalized (self, 1-hop, 2-hop)
+  temporal_kernel: 9
+  type: ST-GCN (PoseModel)
+  valid_mask_handling: Masked input, velocity gating, BN bias suppression, masked
+    spatial pooling
+protocol: SD
+seed: 42
+timestamp: '2026-11-08 03:10:40'
+training:
+  augmentation:
+    hand_dropout_p: 0.1
+    mirror_p: 0.0
+    noise_std: 0.003
+    rot_deg: 12.0
+    scale_range:
+    - 0.9
+    - 1.1
+    shift_range: 0.03
+    speed_range:
+    - 0.85
+    - 1.15
+  batch_size: 32
+  label_smoothing: 0.1
+  learning_rate: 0.001
+  max_epochs: 100
+  optimizer: AdamW
+  patience: 10
+  scheduler: ReduceLROnPlateau(factor=0.5, patience=4, min_lr=1e-5)
+  weight_decay: 0.01

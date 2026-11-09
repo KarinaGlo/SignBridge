@@ -15,7 +15,24 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, PropertyMock
 
 import numpy as np
-import pytest
+
+try:
+    import pytest
+except ImportError:
+    import contextlib
+
+    class _PytestFallback:
+        @staticmethod
+        @contextlib.contextmanager
+        def raises(expected_exc):
+            try:
+                yield
+            except expected_exc:
+                pass
+            else:
+                raise AssertionError(f"Expected exception {expected_exc} was not raised.")
+
+    pytest = _PytestFallback()
 
 
 # ---------------------------------------------------------------------------

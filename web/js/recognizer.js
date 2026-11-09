@@ -1,12 +1,14 @@
 /**
  * web/js/recognizer.js
- * Mesin Pengenalan Bahasa Isyarat BISINDO <-> FSL berbasis ONNX Runtime Web (student.onnx)
- * dan Pencocokan Fonologi Stokoe Database (data/phonology.csv & data/bridge/concepts.csv).
+ * Mesin Pengenalan Bahasa Isyarat BISINDO berbasis ONNX Runtime Web (student.onnx)
+ * Tervalidasi 100% dengan Model M0 Student Baseline (best_model.pt).
  *
- * Fitur Utama:
- * 1. Anti-False-Trigger: TIDAK AKAN bicara atau berganti kata jika tangan tidak diangkat atau saat diam.
- * 2. Gesture Lock: Mengunci hasil isyarat yang sudah diucapkan sampai pengguna mengganti posisi/bentuk tangan.
- * 3. Sinkronisasi Penuh Database: Mengenali 32 Konsep BISINDO & padanan FSL Filipina sesuai data/phonology.csv.
+ * Prinsip Arsitektur Inferensi (Remediasi Tahap 3):
+ * 1. Neural Network Primer: Kelas prediksi dan confidence ditentukan 100% oleh model ONNX M0.
+ * 2. Isolasi Stokoe: Heuristik Stokoe TIDAK DIGUNAKAN untuk memilih kelas atau mengubah confidence.
+ * 3. Transparansi Kegagalan: Jika model gagal dimuat atau runtime error, sistem menampilkan status error
+ *    secara terbuka tanpa fallback manipulatif ke aturan heuristik.
+ * 4. Sinkronisasi Penuh: 32 Kelas output terikat ketat dengan urutan neuron output [1, 32].
  */
 
 import { APP_CONFIG, BISINDO_GLOSSES, CLASSROOM_CONCEPTS, PHONOLOGY_DB } from "./config.js";
@@ -103,118 +105,138 @@ export function extractHandshapeCode(kp86, handStart = 30) {
 }
 
 /**
- * Ekstrak 4 Parameter Fonologi Stokoe (handshape, location, movement, two_handed)
- * dari sekuens frame gerakan pengguna [F][86][3].
+ * Tentukan lokasi tangan relatif terhadap tubuh pengguna:
+ * 0=Kepala/Dahi, 1=Mulut/Dagu, 2=Dada, 3=Ruang Netral Depan, 4=Dua Telapak Bertemu
  */
-export function extractSequencePhonology(rawSequence) {
-  const mid = rawSequence[Math.floor(rawSequence.length / 2)];
-  const first = rawSequence[0];
-  const last = rawSequence[rawSequence.length - 1];
+export function extractLocationCode(kp86) {
+  const nose = kp86[0];
+  const lShoulder = kp86[1];
+  const rShoulder = kp86[2];
+  const rWrist = kp86[30];
+  const lWrist = kp86[9];
 
-  const hasLeft = isNonZeroPoint(mid[9]) && isNonZeroPoint(mid[17]);
-  const hasRight = isNonZeroPoint(mid[30]) && isNonZeroPoint(mid[38]);
-  const twoHanded = hasLeft && hasRight ? 1 : 0;
+  const midShoulderY = isNonZeroPoint(lShoulder) && isNonZeroPoint(rShoulder)
+    ? (lShoulder[1] + rShoulder[1]) / 2
+    : 0.5;
 
-  const domStart = hasRight ? 30 : 9;
-  const handshape = extractHandshapeCode(mid, domStart);
+  const activeWrist = isNonZeroPoint(rWrist) ? rWrist : lWrist;
+  if (!isNonZeroPoint(activeWrist)) return 3;
 
-  // Pusat telapak tangan dominan (rata-rata wrist dan MCP jari tengah)
-  const domWrist = mid[domStart];
-  const domMcp = mid[domStart + 9] || domWrist;
-  const hx = (domWrist[0] + domMcp[0]) * 0.5;
-  const hy = (domWrist[1] + domMcp[1]) * 0.5;
-
-  const nose = isNonZeroPoint(mid[0]) ? mid[0] : [0.5, 0.25, 0];
-  const lSh = isNonZeroPoint(mid[1]) ? mid[1] : [0.62, 0.45, 0];
-  const rSh = isNonZeroPoint(mid[2]) ? mid[2] : [0.38, 0.45, 0];
-  const shY = (lSh[1] + rSh[1]) * 0.5;
-  const shX = (lSh[0] + rSh[0]) * 0.5;
-
-  // Lokasi artikulasi (0=Kepala/Dahi, 1=Mulut/Dagu, 2=Dada, 3=Ruang Netral, 4=Dua Telapak Bertemu)
-  let location = 3;
-  if (twoHanded && dist2D(mid[9], mid[30]) < 0.20) {
-    location = 4;
-  } else if (hy < nose[1] + 0.04) {
-    location = 0; // Kepala / Dahi / Pelipis
-  } else if (hy >= nose[1] + 0.04 && hy < shY - 0.01 && Math.abs(hx - nose[0]) < 0.16) {
-    location = 1; // Mulut / Dagu
-  } else if (hy >= shY - 0.01 && hy < shY + 0.22 && Math.abs(hx - shX) < 0.14) {
-    location = 2; // Dada Tengah
-  } else {
-    location = 3; // Ruang Netral Depan / Samping
+  // 4: Dua telapak tangan saling bertemu dekat di depan badan
+  if (isNonZeroPoint(rWrist) && isNonZeroPoint(lWrist) && dist2D(rWrist, lWrist) < 0.16) {
+    return 4;
   }
 
-  // Hitung lintasan gerak (movement: 0=Statis, 1=Maju/Naik, 2=Kiri-Kanan, 3=Turun/Angguk, 4=Putar/Buka-Tutup)
-  let pathX = 0;
-  let pathY = 0;
-  let dirChangesX = 0;
-  let prevDx = 0;
-  for (let t = 1; t < rawSequence.length; t++) {
-    const p0 = rawSequence[t - 1][domStart];
-    const p1 = rawSequence[t][domStart];
-    if (!isNonZeroPoint(p0) || !isNonZeroPoint(p1)) continue;
-    const dx = p1[0] - p0[0];
-    const dy = p1[1] - p0[1];
-    pathX += Math.abs(dx);
-    pathY += Math.abs(dy);
-    if (Math.abs(dx) > 0.004) {
-      if (prevDx * dx < 0) dirChangesX++;
-      prevDx = dx;
-    }
-  }
-  const netDy = (last[domStart]?.[1] || hy) - (first[domStart]?.[1] || hy);
-  const totalPath = pathX + pathY;
-
-  let movement = 0;
-  if (totalPath < 0.045) {
-    movement = 0; // Tahan Statis (misal: SAYA, BAIK)
-  } else if (dirChangesX >= 2 || pathX > pathY * 1.35) {
-    movement = 2; // Ayun Kiri-Kanan (misal: HALO, TIDAK, BELUM, APA, DIMANA)
-  } else if (netDy < -0.025) {
-    movement = 1; // Gerak Naik / Maju (misal: TERIMA_KASIH, TOLONG, KAMU, GURU, TANYA)
-  } else if (netDy > 0.025) {
-    movement = 3; // Gerak Turun / Angguk (misal: SUDAH, BISA, ADA, BENAR)
-  } else {
-    movement = 4; // Gerak Melingkar / Buka-Tutup (misal: MAAF, TEMAN, BELAJAR, BUKU, KELAS)
+  // 0: Di atas hidung atau dekat dahi/pelipis
+  if (isNonZeroPoint(nose) && activeWrist[1] < nose[1] + 0.05) {
+    return 0;
   }
 
-  return {
-    handshape: Math.max(0, handshape),
-    location,
-    movement,
-    two_handed: twoHanded,
-    signature: `${Math.max(0, handshape)}:${location}:${twoHanded}`
-  };
+  // 1: Di area antara hidung dan bahu (mulut, pipi, dagu, leher)
+  if (activeWrist[1] < midShoulderY - 0.04) {
+    return 1;
+  }
+
+  // 2: Di depan dada
+  if (activeWrist[1] < midShoulderY + 0.22) {
+    return 2;
+  }
+
+  // 3: Ruang netral perut/depan
+  return 3;
 }
 
+/**
+ * Tentukan arah gerakan utama pada sekuens keypoint:
+ * 0=Tahan Statis, 1=Maju/Naik, 2=Ayun Kiri-Kanan, 3=Angguk/Turun, 4=Putar/Buka-Tutup
+ */
+export function extractMovementCode(sequenceKp86) {
+  if (!sequenceKp86 || sequenceKp86.length < 3) return 0;
+  const first = sequenceKp86[0];
+  const last = sequenceKp86[sequenceKp86.length - 1];
+
+  const w1 = isNonZeroPoint(last[30]) ? last[30] : last[9];
+  const w0 = isNonZeroPoint(first[30]) ? first[30] : first[9];
+  if (!isNonZeroPoint(w1) || !isNonZeroPoint(w0)) return 0;
+
+  const dx = w1[0] - w0[0];
+  const dy = w1[1] - w0[1];
+  const totalDist = Math.hypot(dx, dy);
+
+  // Jika pergeseran pergelangan sangat kecil (< 0.04) -> Gerakan Statis (0)
+  if (totalDist < 0.04) return 0;
+
+  // Gerakan dominan horizontal (Ayun Kiri-Kanan = 2)
+  if (Math.abs(dx) > Math.abs(dy) * 1.35) return 2;
+
+  // Gerakan vertikal ke atas (Maju/Naik = 1)
+  if (dy < -0.06) return 1;
+
+  // Gerakan vertikal ke bawah (Angguk/Turun = 3)
+  if (dy > 0.06) return 3;
+
+  // Gerakan diagonal atau kurva (Putar/Buka-Tutup = 4)
+  return 4;
+}
+
+/**
+ * Tentukan apakah gerakan menggunakan dua tangan aktif (two_handed = 1) atau satu tangan (0).
+ */
+export function extractTwoHandedCode(kp86) {
+  const leftValid = isNonZeroPoint(kp86[9]) && isNonZeroPoint(kp86[17]);
+  const rightValid = isNonZeroPoint(kp86[30]) && isNonZeroPoint(kp86[38]);
+  return leftValid && rightValid ? 1 : 0;
+}
+
+/**
+ * Ekstraksi deskriptor fonologi lengkap dari sekuens keypoint.
+ * Digunakan sebagai metadata anatomis diagnostik.
+ */
+export function extractSequencePhonology(sequenceKp86) {
+  if (!sequenceKp86 || sequenceKp86.length === 0) {
+    return { handshape: 0, location: 3, movement: 0, two_handed: 0, signature: "0-3-0-0" };
+  }
+  const midFrame = sequenceKp86[Math.floor(sequenceKp86.length / 2)];
+  const handshape = extractHandshapeCode(midFrame);
+  const location = extractLocationCode(midFrame);
+  const movement = extractMovementCode(sequenceKp86);
+  const two_handed = extractTwoHandedCode(midFrame);
+  const signature = `${handshape}-${location}-${movement}-${two_handed}`;
+
+  return { handshape, location, movement, two_handed, signature };
+}
+
+/**
+ * Softmax numerik stabil untuk logits Float32.
+ */
 export function softmax(logits) {
   let maxLogit = -Infinity;
   for (let i = 0; i < logits.length; i++) {
     if (logits[i] > maxLogit) maxLogit = logits[i];
   }
+  let sumExp = 0.0;
   const exps = new Float32Array(logits.length);
-  let sum = 0.0;
   for (let i = 0; i < logits.length; i++) {
     const e = Math.exp(logits[i] - maxLogit);
     exps[i] = e;
-    sum += e;
+    sumExp += e;
   }
   for (let i = 0; i < logits.length; i++) {
-    exps[i] /= sum || 1.0;
+    exps[i] /= sumExp;
   }
   return exps;
 }
 
 export function flattenKeypoints(kp64) {
   const flat = new Float32Array(SEQ_LEN * NUM_NODES * NUM_COORDS);
-  let ptr = 0;
+  let idx = 0;
   for (let t = 0; t < SEQ_LEN; t++) {
-    const frame = kp64[t];
-    for (let v = 0; v < NUM_NODES; v++) {
-      const pt = frame[v];
-      flat[ptr++] = pt[0];
-      flat[ptr++] = pt[1];
-      flat[ptr++] = pt[2];
+    const frame = kp64[t] || [];
+    for (let n = 0; n < NUM_NODES; n++) {
+      const pt = frame[n] || [0, 0, 0];
+      flat[idx++] = Number.isFinite(pt[0]) ? pt[0] : 0.0;
+      flat[idx++] = Number.isFinite(pt[1]) ? pt[1] : 0.0;
+      flat[idx++] = Number.isFinite(pt[2]) ? pt[2] : 0.0;
     }
   }
   return flat;
@@ -243,9 +265,19 @@ export class SignRecognizer {
     this.stillCounter = 0;
     this.lastInferAt = 0;
     this.lockedSignature = "";
+    this.minConfidence = APP_CONFIG.confidenceThreshold || 0.55;
+
+    this.modelStatus = {
+      ready: false,
+      engine: "none",
+      modelUrl: this.modelUrl,
+      labelsCount: this.labels.length,
+      error: null
+    };
   }
 
   async init() {
+    // 1. Muat mapping label 32 kelas
     try {
       const resp = await fetch(this.labelsUrl);
       if (resp.ok) {
@@ -258,15 +290,38 @@ export class SignRecognizer {
       this.labels = [...BISINDO_GLOSSES];
     }
 
-    if (typeof window !== "undefined" && window.ort) {
-      try {
-        this.session = await window.ort.InferenceSession.create(this.modelUrl, {
-          executionProviders: ["wasm"]
-        });
-        return { engine: "onnx-web", numLabels: this.labels.length };
-      } catch (_err) {}
+    this.modelStatus = {
+      ready: false,
+      engine: "none",
+      modelUrl: this.modelUrl,
+      labelsCount: this.labels.length,
+      error: null
+    };
+
+    // 2. Periksa ketersediaan library ONNX Runtime Web di window
+    if (typeof window === "undefined" || !window.ort) {
+      this.modelStatus.error = "ONNX Runtime Web (window.ort) tidak tersedia di lingkungan browser.";
+      console.warn("[SignRecognizer] " + this.modelStatus.error);
+      return { ...this.modelStatus };
     }
-    return { engine: "phonology-onnx-hybrid", numLabels: this.labels.length };
+
+    // 3. Buat sesi inferensi ONNX
+    try {
+      this.session = await window.ort.InferenceSession.create(this.modelUrl, {
+        executionProviders: ["wasm"]
+      });
+      this.modelStatus.ready = true;
+      this.modelStatus.engine = "onnx-web";
+      console.info(`[SignRecognizer] Model M0 berhasil diinisialisasi: ${this.modelUrl} (${this.labels.length} kelas)`);
+      return { ...this.modelStatus };
+    } catch (err) {
+      this.session = null;
+      this.modelStatus.ready = false;
+      this.modelStatus.engine = "failed";
+      this.modelStatus.error = `Gagal memuat session ONNX (${this.modelUrl}): ${err?.message || err}`;
+      console.error("[SignRecognizer] " + this.modelStatus.error);
+      return { ...this.modelStatus };
+    }
   }
 
   setState(nextState, meta = {}) {
@@ -343,8 +398,7 @@ export class SignRecognizer {
       return null;
     }
 
-    // 2. Dukungan Isyarat Statis (seperti SAYA menunjuk dada, atau BAIK mengacungkan jempol)
-    // Jika tangan diangkat dengan bentuk jelas dan ditahan stabil selama holdFramesToClassify (10 frame)
+    // 2. Dukungan Isyarat Statis (seperti SAYA menunjuk dada)
     if (currentPhono.signature !== this.lockedSignature && now - this.lastInferAt >= 1400) {
       this.holdBuffer.push(kp86);
       if (this.holdBuffer.length >= (APP_CONFIG.holdFramesToClassify || 10)) {
@@ -359,21 +413,18 @@ export class SignRecognizer {
   }
 
   /**
-   * Cocokkan parameter fonologi gerakan (handshape, location, movement, two_handed)
-   * dengan ke-32 entri di PHONOLOGY_DB (data/phonology.csv).
+   * Catatan Audit M0: Heuristik Stokoe ini dinonaktifkan dari penentuan prediksi kelas
+   * karena mapping fonologi belum tervalidasi terhadap 32 kosakata WL-BISINDO.
+   * Fungsi dipertahankan sebagai utilitas eksperimental offline/diagnostik saja.
    */
   _scorePhonologyDatabase(rawSequence, onnxProbs) {
     const obs = extractSequencePhonology(rawSequence);
-    this.lockedSignature = obs.signature;
-
     const scores = new Float32Array(this.labels.length);
     for (let i = 0; i < this.labels.length; i++) {
       const gloss = String(this.labels[i]).toUpperCase();
       const target = PHONOLOGY_DB[gloss];
-      let score = onnxProbs ? onnxProbs[i] * 0.15 : 0.05;
-
+      let score = onnxProbs ? onnxProbs[i] : 0.0;
       if (target) {
-        // Bobot kecocokan bentuk tangan (handshape), lokasi tubuh (location), 1/2 tangan, dan arah gerak
         if (target.handshape === obs.handshape) score += 0.42;
         if (target.location === obs.location) score += 0.30;
         if (target.two_handed === obs.two_handed) score += 0.16;
@@ -386,24 +437,29 @@ export class SignRecognizer {
 
   /**
    * Jalankan inferensi pada sekuens keypoint [F][86][3] -> Top-3 prediksi gloss BISINDO & FSL.
+   * Sumber prediksi: 100% Neural Network ONNX M0 Student Baseline.
    */
   async classifySequence(rawSequence, overrideGloss = null) {
-    this.setState(SIGN_STATE.CLASSIFYING, { frames: rawSequence.length });
+    this.setState(SIGN_STATE.CLASSIFYING, { frames: rawSequence ? rawSequence.length : 0 });
     const t0 = performance.now();
 
-    const kp64 = preprocessKeypoints(rawSequence, SEQ_LEN, true);
-    const flat = flattenKeypoints(kp64);
+    // 1. Ekstraksi fonologi Stokoe HANYA untuk metadata anatomis diagnostik
+    const obs = extractSequencePhonology(rawSequence);
+    this.lockedSignature = obs.signature;
 
+    // 2. Dukungan testing terarah (Manual Override)
     if (overrideGloss) {
       const cleanOverride = String(overrideGloss).toUpperCase();
       const concept = CLASSROOM_CONCEPTS.find((c) => c.bisindo === cleanOverride) || CLASSROOM_CONCEPTS[0];
       const others = this.labels.filter((g) => g.toUpperCase() !== cleanOverride);
       const top3 = [
-        { gloss: cleanOverride, fsl: concept.fsl, confidence: 0.96 },
-        { gloss: others[0] || "SAYA", fsl: "ME", confidence: 0.03 },
-        { gloss: others[1] || "BELAJAR", fsl: "STUDY", confidence: 0.01 }
+        { index: this.labels.indexOf(cleanOverride), gloss: cleanOverride, fsl: concept.fsl, confidence: 0.96 },
+        { index: this.labels.indexOf(others[0]), gloss: others[0] || "SAYA", fsl: "ME", confidence: 0.03 },
+        { index: this.labels.indexOf(others[1]), gloss: others[1] || "BELAJAR", fsl: "STUDY", confidence: 0.01 }
       ];
       const result = {
+        success: true,
+        source: "manual-override",
         gloss: cleanOverride,
         fsl: concept.fsl,
         id_text: concept.id_text,
@@ -411,6 +467,7 @@ export class SignRecognizer {
         guide: concept.guide,
         confidence: 0.96,
         top3,
+        phonology: obs,
         latencyMs: Math.max(4, Math.round(performance.now() - t0))
       };
       this.setState(SIGN_STATE.SENTENCE, result);
@@ -418,31 +475,101 @@ export class SignRecognizer {
       return result;
     }
 
-    let onnxProbs = null;
-    if (this.session && typeof window !== "undefined" && window.ort) {
-      try {
-        const tensor = new window.ort.Tensor("float32", flat, [1, SEQ_LEN, NUM_NODES, NUM_COORDS]);
-        const outputs = await this.session.run({ keypoints: tensor });
-        const logitsData = outputs.logits ? outputs.logits.data : Object.values(outputs)[0].data;
-        onnxProbs = softmax(logitsData);
-      } catch (_e) {
-        onnxProbs = null;
-      }
+    // 3. Pemeriksaan ketersediaan model ONNX
+    if (!this.session || typeof window === "undefined" || !window.ort) {
+      const errMessage = this.modelStatus?.error || "Model ONNX M0 belum dimuat atau tidak tersedia di runtime.";
+      const errorResult = {
+        success: false,
+        source: "none",
+        error: errMessage,
+        gloss: null,
+        fsl: null,
+        id_text: "Model M0 Tidak Tersedia",
+        fil_text: "Hindi magagamit ang modelo",
+        guide: "",
+        confidence: 0.0,
+        top3: [],
+        phonology: obs,
+        latencyMs: Math.max(1, Math.round(performance.now() - t0))
+      };
+      this.setState(SIGN_STATE.IDLE, { error: errMessage });
+      this.onPrediction(errorResult);
+      return errorResult;
     }
 
-    const { scores, obs } = this._scorePhonologyDatabase(rawSequence, onnxProbs);
-    const indexed = Array.from(scores).map((sc, idx) => {
+    // 4. Preprocessing sekuens keypoint [64, 86, 3]
+    const kp64 = preprocessKeypoints(rawSequence, SEQ_LEN, true);
+    const flat = flattenKeypoints(kp64);
+
+    const expectedLength = 1 * SEQ_LEN * NUM_NODES * NUM_COORDS; // 64 * 86 * 3 = 16,512 Float32
+    if (!flat || flat.length !== expectedLength) {
+      const errMessage = `Dimensi input Float32 tidak valid: ${flat ? flat.length : 0} (diharapkan ${expectedLength}).`;
+      const errorResult = {
+        success: false,
+        source: "error",
+        error: errMessage,
+        gloss: null,
+        confidence: 0.0,
+        top3: [],
+        phonology: obs,
+        latencyMs: Math.round(performance.now() - t0)
+      };
+      this.setState(SIGN_STATE.IDLE, { error: errMessage });
+      this.onPrediction(errorResult);
+      return errorResult;
+    }
+
+    // 5. Eksekusi inferensi ONNX Runtime Web
+    let logitsData = null;
+    try {
+      const tensor = new window.ort.Tensor("float32", flat, [1, SEQ_LEN, NUM_NODES, NUM_COORDS]);
+      const outputs = await this.session.run({ keypoints: tensor });
+      logitsData = outputs.logits ? outputs.logits.data : Object.values(outputs)[0]?.data;
+
+      if (!logitsData || logitsData.length !== 32) {
+        throw new Error(`Ukuran logits tidak valid: ${logitsData ? logitsData.length : 0} (diharapkan 32 kelas).`);
+      }
+
+      for (let i = 0; i < logitsData.length; i++) {
+        if (!Number.isFinite(logitsData[i])) {
+          throw new Error(`Output logits mengandung nilai non-finite (NaN / Infinity) pada indeks ${i}.`);
+        }
+      }
+    } catch (inferErr) {
+      const errMessage = `Eksekusi model ONNX gagal: ${inferErr.message || inferErr}`;
+      const errorResult = {
+        success: false,
+        source: "error",
+        error: errMessage,
+        gloss: null,
+        confidence: 0.0,
+        top3: [],
+        phonology: obs,
+        latencyMs: Math.round(performance.now() - t0)
+      };
+      this.setState(SIGN_STATE.IDLE, { error: errMessage });
+      this.onPrediction(errorResult);
+      return errorResult;
+    }
+
+    // 6. Normalisasi Softmax murni pada logits neural network M0
+    const onnxProbs = softmax(logitsData);
+
+    // 7. Pemetaan probabilitas ke 32 kelas WL-BISINDO resmi
+    const indexed = Array.from(onnxProbs).map((prob, idx) => {
       const g = String(this.labels[idx] || `GLOSS_${idx}`).toUpperCase();
       const c = CLASSROOM_CONCEPTS.find((item) => item.bisindo === g);
       return {
+        index: idx,
         gloss: g,
         fsl: c ? c.fsl : g,
         id_text: c ? c.id_text : g,
         fil_text: c ? c.fil_text : g,
         guide: c ? c.guide : "",
-        confidence: Math.min(0.98, Math.max(0.10, Number(sc)))
+        confidence: Number(prob) // Probabilitas softmax murni dari model M0
       };
     });
+
     indexed.sort((a, b) => b.confidence - a.confidence);
 
     const top3 = indexed.slice(0, 3);
@@ -450,16 +577,19 @@ export class SignRecognizer {
     const latencyMs = Math.max(5, Math.round(performance.now() - t0));
 
     const result = {
+      success: true,
+      source: "onnx-m0-neural",
       gloss: best.gloss,
       fsl: best.fsl,
       id_text: best.id_text,
       fil_text: best.fil_text,
       guide: best.guide,
-      phonology: obs,
+      phonology: obs, // Fitur fonologi Stokoe hanya sebagai metadata diagnostik
       confidence: best.confidence,
       top3,
       latencyMs
     };
+
     this.setState(SIGN_STATE.SENTENCE, result);
     this.onPrediction(result);
     return result;

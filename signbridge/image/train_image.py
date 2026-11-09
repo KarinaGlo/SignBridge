@@ -29,17 +29,34 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
 import yaml
+
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch.utils.data import DataLoader, Dataset
+
+    _TORCH_AVAILABLE = True
+    _BaseModule = nn.Module
+    _BaseDataset = Dataset
+except ImportError:  # pragma: no cover - lightweight runtime without PyTorch
+    torch = None  # type: ignore[assignment]
+    nn = None  # type: ignore[assignment]
+    F = None  # type: ignore[assignment]
+    DataLoader = None  # type: ignore[assignment]
+    Dataset = object  # type: ignore[assignment]
+    _TORCH_AVAILABLE = False
+    _BaseModule = object
+    _BaseDataset = object
 
 from signbridge.constants import FINGERSPELL_26_LABELS, IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
 
 
-class DepthwiseSeparableBlock(nn.Module):
+class DepthwiseSeparableBlock(_BaseModule):
     def __init__(self, in_ch: int, out_ch: int, stride: int = 1, expand_ratio: int = 2) -> None:
+        if not _TORCH_AVAILABLE:
+            raise RuntimeError("Dependency 'torch' (PyTorch) belum terpasang. Instal dengan: pip install torch")
         super().__init__()
         mid_ch = in_ch * expand_ratio
         self.use_res = stride == 1 and in_ch == out_ch
@@ -59,10 +76,12 @@ class DepthwiseSeparableBlock(nn.Module):
         return x + out if self.use_res else out
 
 
-class MobileNetV3SmallClassifier(nn.Module):
+class MobileNetV3SmallClassifier(_BaseModule):
     """I1: MobileNetV3-Small architecture for 224x224 hand crops -> 26 A-Z classes."""
 
     def __init__(self, num_classes: int = 26, dropout: float = 0.2) -> None:
+        if not _TORCH_AVAILABLE:
+            raise RuntimeError("Dependency 'torch' (PyTorch) belum terpasang. Instal dengan: pip install torch")
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 24, kernel_size=3, stride=2, padding=1, bias=False),
@@ -87,10 +106,12 @@ class MobileNetV3SmallClassifier(nn.Module):
         return self.classifier(self.features(x))
 
 
-class EfficientNetB0Classifier(nn.Module):
+class EfficientNetB0Classifier(_BaseModule):
     """I2: Compound-scaled EfficientNet-style CNN classifier."""
 
     def __init__(self, num_classes: int = 26, dropout: float = 0.2) -> None:
+        if not _TORCH_AVAILABLE:
+            raise RuntimeError("Dependency 'torch' (PyTorch) belum terpasang. Instal dengan: pip install torch")
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1, bias=False),
@@ -114,10 +135,12 @@ class EfficientNetB0Classifier(nn.Module):
         return self.classifier(self.features(x))
 
 
-class MobileViTXSClassifier(nn.Module):
+class MobileViTXSClassifier(_BaseModule):
     """I3: Hybrid CNN + Transformer Self-Attention (MobileViT-XS) for hand shapes."""
 
     def __init__(self, num_classes: int = 26, dropout: float = 0.2) -> None:
+        if not _TORCH_AVAILABLE:
+            raise RuntimeError("Dependency 'torch' (PyTorch) belum terpasang. Instal dengan: pip install torch")
         super().__init__()
         self.stem = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1, bias=False),
@@ -161,18 +184,19 @@ def build_image_model(arch: str, num_classes: int = 26, dropout: float = 0.2) ->
         raise ValueError(f"Unknown image architecture: {arch!r}")
 
 
-class FingerspellDataset(Dataset):
+class FingerspellDataset(_BaseDataset):
     """
     Dataset for 224x224 hand crops (A-Z, 26 classes).
-    Augmentations on train split: slight translation/scale + color jitter, NO horizontal flip
-    (because BISINDO handshapes depend on handedness).
+    Keamanan Pipeline (Tahap A):
+      - Wajib membaca berkas fisik (.npy hasil crop RGB asli maupun .jpg/.jpeg/.png asli).
+      - Tidak pernah menghasilkan pola gelombang sinus atau citra sintetis ketika manifest/file tidak ada.
+      - Tidak ada horizontal flip karena abjad BISINDO bergantung pada handedness.
     """
 
     def __init__(
         self,
         manifest_path: Optional[str | Path] = None,
         split: str = "train",
-        num_samples_fallback: int = 78,
         seed: int = 42,
     ) -> None:
         super().__init__()
@@ -180,63 +204,121 @@ class FingerspellDataset(Dataset):
         self.seed = seed
         self.rows: List[Dict[str, Any]] = []
 
-        if manifest_path is not None and Path(manifest_path).exists():
-            with Path(manifest_path).open("r", encoding="utf-8", newline="") as f:
-                reader = csv.DictReader(f)
-                for r in reader:
-                    if (r.get("split") or "train").strip().lower() == self.split:
-                        if str(r.get("hand_found", "1")).lower() not in ("0", "false"):
-                            self.rows.append(r)
+        if manifest_path is None:
+            raise ValueError("manifest_path wajib diberikan untuk FingerspellDataset (tidak ada synthetic fallback).")
+
+        manifest_file = Path(manifest_path)
+        if not manifest_file.exists() or not manifest_file.is_file():
+            raise FileNotFoundError(
+                f"Berkas manifest citra fingerspelling tidak ditemukan: {manifest_file}. "
+                "Jalankan preprocessing citra asli terlebih dahulu."
+            )
+
+        with manifest_file.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            all_rows = list(reader)
+
+        split_paths: Dict[str, set[str]] = {"train": set(), "val": set(), "test": set()}
+        split_sources: Dict[str, set[str]] = {"train": set(), "val": set(), "test": set()}
+        split_shas: Dict[str, set[str]] = {"train": set(), "val": set(), "test": set()}
+
+        for r in all_rows:
+            row_split = (r.get("split") or "train").strip().lower()
+            if str(r.get("hand_found", "1")).lower() in ("0", "false"):
+                continue
+            img_rel = (r.get("path") or "").strip()
+            if not img_rel:
+                raise ValueError(f"Baris manifest memiliki kolom 'path' kosong pada {manifest_file}: {r}")
+            if row_split in split_paths:
+                split_paths[row_split].add(img_rel)
+                src_rel = (r.get("source_path") or "").strip()
+                if src_rel:
+                    split_sources[row_split].add(src_rel)
+                sha_val = (r.get("sha256") or "").strip().lower()
+                if sha_val:
+                    split_shas[row_split].add(sha_val)
+            if row_split == self.split:
+                self.rows.append(r)
+
+        for s1, s2 in (("train", "val"), ("train", "test"), ("val", "test")):
+            if split_paths[s1].intersection(split_paths[s2]):
+                raise ValueError(
+                    f"Kebocoran path gambar duplikat antar-split ({s1} vs {s2}) pada manifest: {manifest_file}"
+                )
+            if split_sources[s1].intersection(split_sources[s2]):
+                raise ValueError(
+                    f"Kebocoran source_path gambar duplikat antar-split ({s1} vs {s2}) pada manifest: {manifest_file}"
+                )
+            if split_shas[s1].intersection(split_shas[s2]):
+                raise ValueError(
+                    f"Kebocoran SHA-256 gambar duplikat antar-split ({s1} vs {s2}) pada manifest: {manifest_file}"
+                )
 
         if not self.rows:
-            for i in range(num_samples_fallback):
-                lbl = i % 26
-                self.rows.append(
-                    {
-                        "path": "",
-                        "letter": FINGERSPELL_26_LABELS[lbl],
-                        "label": lbl,
-                        "split": self.split,
-                    }
-                )
+            raise ValueError(
+                f"Tidak ditemukan sampel citra untuk split={self.split!r} di dalam manifest: {manifest_file}"
+            )
 
     def __len__(self) -> int:
         return len(self.rows)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def load_normalized_chw(self, idx: int) -> Tuple[np.ndarray, int]:
+        """
+        Baca berkas citra fisik (.npy atau .jpg/.jpeg/.png) pada indeks `idx` dan kembalikan
+        (array float32 [3, 224, 224] ternormalisasi ImageNet, integer label 0..25).
+        """
         r = self.rows[idx]
-        lbl = int(r.get("label", FINGERSPELL_26_LABELS.index(r.get("letter", "A"))))
-        rng = np.random.default_rng(self.seed + lbl * 313 + idx)
+        letter = (r.get("letter") or "").strip().upper()
+        if letter in FINGERSPELL_26_LABELS:
+            lbl = FINGERSPELL_26_LABELS.index(letter)
+        elif str(r.get("label", "")).isdigit():
+            lbl = int(r["label"])
+        else:
+            raise ValueError(f"Label kelas tidak valid pada baris manifest: {r}")
 
-        # Generate structured synthetic 3x224x224 ImageNet-normalized tensor if image file not present
-        img_path = r.get("path", "")
-        if img_path and Path(img_path).exists():
+        if not (0 <= lbl < len(FINGERSPELL_26_LABELS)):
+            raise ValueError(f"Indeks label di luar rentang 0..25: {lbl}")
+
+        img_path = Path(str(r.get("path", "")).strip())
+        if not img_path.exists() or not img_path.is_file():
+            raise FileNotFoundError(f"Berkas citra fisik tidak ditemukan pada disk: {img_path}")
+        if img_path.stat().st_size == 0:
+            raise ValueError(f"Berkas citra berukuran 0 byte (rusak): {img_path}")
+
+        if img_path.suffix.lower() == ".npy":
+            raw_arr = np.load(str(img_path))
+            if raw_arr.ndim != 3 or raw_arr.shape[2] != 3:
+                raise ValueError(f"Array .npy memiliki dimensi tidak valid {raw_arr.shape}: {img_path}")
+            if raw_arr.shape[0] != IMAGE_SIZE or raw_arr.shape[1] != IMAGE_SIZE:
+                from signbridge.image.crop import _bilinear_resize_rgb
+
+                raw_arr = _bilinear_resize_rgb(raw_arr, out_h=IMAGE_SIZE, out_w=IMAGE_SIZE)
+            arr_f = raw_arr.astype(np.float32)
+            if arr_f.max() > 1.5:
+                arr_f = arr_f / 255.0
+        else:
             try:
-                from PIL import Image
+                from PIL import Image, UnidentifiedImageError
+            except ImportError as exc:
+                raise RuntimeError("Dependency 'Pillow' (PIL) diperlukan untuk membaca citra.") from exc
 
-                im = Image.open(img_path).convert("RGB").resize((IMAGE_SIZE, IMAGE_SIZE))
-                arr = np.asarray(im, dtype=np.float32) / 255.0
-                mean = np.array(IMAGENET_MEAN, dtype=np.float32)
-                std = np.array(IMAGENET_STD, dtype=np.float32)
-                arr = ((arr - mean) / std).transpose(2, 0, 1)
-                return torch.from_numpy(arr.astype(np.float32)), torch.tensor(lbl, dtype=torch.long)
-            except Exception:
-                pass
+            try:
+                with Image.open(img_path) as im:
+                    rgb = im.convert("RGB").resize((IMAGE_SIZE, IMAGE_SIZE))
+                    arr_f = np.asarray(rgb, dtype=np.float32) / 255.0
+            except (UnidentifiedImageError, OSError, ValueError, SyntaxError) as exc:
+                raise ValueError(f"Gagal membaca berkas citra RGB asli {img_path}: {exc}") from exc
 
-        # Low-rank class-conditional pattern + slight jitter (no horizontal flip)
-        y_grid = np.linspace(-1, 1, IMAGE_SIZE, dtype=np.float32)[:, None]
-        x_grid = np.linspace(-1, 1, IMAGE_SIZE, dtype=np.float32)[None, :]
-        freq_x = 1.0 + (lbl % 5) * 0.5
-        freq_y = 1.0 + (lbl // 5) * 0.5
-        pattern = np.sin(freq_x * x_grid + lbl * 0.2) * np.cos(freq_y * y_grid)
-        img = np.stack([pattern, pattern * 0.8, -pattern * 0.5], axis=0).astype(np.float32)
-        if self.split == "train":
-            # Color jitter without horizontal flip
-            brightness = float(rng.uniform(-0.15, 0.15))
-            contrast = float(rng.uniform(0.85, 1.15))
-            img = img * contrast + brightness
-        img = img + rng.normal(0.0, 0.05, size=img.shape).astype(np.float32)
-        return torch.from_numpy(img), torch.tensor(lbl, dtype=torch.long)
+        mean = np.array(IMAGENET_MEAN, dtype=np.float32)
+        std = np.array(IMAGENET_STD, dtype=np.float32)
+        chw = ((arr_f - mean) / std).transpose(2, 0, 1).astype(np.float32)
+        return chw, lbl
+
+    def __getitem__(self, idx: int) -> Tuple[Any, Any]:
+        chw, lbl = self.load_normalized_chw(idx)
+        if not _TORCH_AVAILABLE:
+            return chw, lbl
+        return torch.from_numpy(chw), torch.tensor(lbl, dtype=torch.long)
 
 
 def export_fingerspell_onnx(
@@ -306,6 +388,11 @@ def run_image_training(
     out_dir_override: Optional[str | Path] = None,
     epochs_override: Optional[int] = None,
 ) -> Dict[str, Any]:
+    if not _TORCH_AVAILABLE:
+        raise RuntimeError(
+            "Dependency 'torch' (PyTorch) belum terpasang untuk menjalankan training citra. "
+            "Instal terlebih dahulu dengan: pip install torch"
+        )
     config_path = Path(config_path)
     with config_path.open("r", encoding="utf-8") as f:
         cfg: Dict[str, Any] = yaml.safe_load(f)
@@ -330,9 +417,9 @@ def run_image_training(
     label_smoothing = float(train_cfg.get("label_smoothing", 0.1))
 
     manifest_path = cfg.get("data", {}).get("manifest", "data/images/manifest_images_mendeley.csv")
-    train_ds = FingerspellDataset(manifest_path=manifest_path, split="train", num_samples_fallback=52, seed=seed)
-    val_ds = FingerspellDataset(manifest_path=manifest_path, split="val", num_samples_fallback=26, seed=seed + 1)
-    test_ds = FingerspellDataset(manifest_path=manifest_path, split="test", num_samples_fallback=26, seed=seed + 2)
+    train_ds = FingerspellDataset(manifest_path=manifest_path, split="train", seed=seed)
+    val_ds = FingerspellDataset(manifest_path=manifest_path, split="val", seed=seed + 1)
+    test_ds = FingerspellDataset(manifest_path=manifest_path, split="test", seed=seed + 2)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)

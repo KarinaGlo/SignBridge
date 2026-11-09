@@ -16,8 +16,21 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
-import torch
-from torch.utils.data import Dataset, get_worker_info
+
+try:
+    import torch
+    from torch.utils.data import Dataset, get_worker_info
+
+    _TORCH_AVAILABLE = True
+except ImportError:  # pragma: no cover - lightweight runtime without PyTorch
+    torch = None  # type: ignore[assignment]
+    _TORCH_AVAILABLE = False
+
+    class Dataset:  # type: ignore[no-redef]
+        pass
+
+    def get_worker_info() -> Any:  # type: ignore[misc]
+        return None
 
 from signbridge.constants import (
     BISINDO_32_GLOSSES,
@@ -52,16 +65,34 @@ def load_phonology_map(
 
     path = Path(phonology_csv)
     rows: List[Dict[str, str]] = []
-    with path.open("r", encoding="utf-8", newline="") as f:
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             if row.get("gloss"):
                 rows.append(row)
 
+    # Alias fallback agar kompatibel dengan header 4-kolom di data/phonology.csv
+    # (`handshape`, `location`, `movement`, `two_handed`) maupun 6-kolom PHONOLOGY_COLUMNS.
+    col_aliases: Dict[str, Tuple[str, ...]] = {
+        "handshape_dom": ("handshape_dom", "handshape"),
+        "handshape_nondom": ("handshape_nondom",),
+        "location": ("location",),
+        "movement": ("movement",),
+        "orientation": ("orientation",),
+        "handedness": ("handedness", "two_handed"),
+    }
+
+    def _get_col_val(row_dict: Dict[str, str], canonical_col: str) -> str:
+        for candidate in col_aliases.get(canonical_col, (canonical_col,)):
+            v = (row_dict.get(candidate) or "").strip()
+            if v:
+                return v
+        return ""
+
     vocab: Dict[str, Dict[str, int]] = {col: {} for col in PHONOLOGY_COLUMNS}
     for row in rows:
         for col in PHONOLOGY_COLUMNS:
-            val = (row.get(col) or "").strip()
+            val = _get_col_val(row, col)
             if val and val != "-1" and val.lower() != "none":
                 if val not in vocab[col]:
                     vocab[col][val] = len(vocab[col])
@@ -72,7 +103,7 @@ def load_phonology_map(
         gloss = row["gloss"].strip()
         vec = np.full(len(PHONOLOGY_COLUMNS), -1, dtype=np.int64)
         for i, col in enumerate(PHONOLOGY_COLUMNS):
-            val = (row.get(col) or "").strip()
+            val = _get_col_val(row, col)
             if val in vocab[col]:
                 vec[i] = vocab[col][val]
         gloss_to_phono[gloss] = vec
@@ -108,6 +139,8 @@ class SignDataset(Dataset):
         augment_cfg: Optional[Dict[str, Any]] = None,
         target_len: int = T_MAX,
         base_seed: int = 42,
+        allow_mixed_sources: bool = False,
+        allow_partial_class_coverage: bool = False,
     ) -> None:
         super().__init__()
         self.manifest_path = Path(manifest_path)
@@ -117,12 +150,21 @@ class SignDataset(Dataset):
         self.test_signer = str(test_signer)
         self.target_len = target_len
         self.base_seed = int(base_seed)
+        self.allow_mixed_sources = bool(allow_mixed_sources)
+        # Tahap A.2.2: protokol SI menolak split val/test yang tidak mencakup seluruh kelas
+        # (mis. WL-BISINDO signer0 hanya label0..11) kecuali diizinkan eksplisit.
+        self.allow_partial_class_coverage = bool(allow_partial_class_coverage)
+        self.si_coverage_report: Dict[str, List[str]] = {}
         self.epoch: int = 0
         self.augment_cfg = augment_cfg or {}
 
         self.gloss_to_phono, self.phono_num_classes = load_phonology_map(phonology_csv)
 
-        all_rows = self._read_manifest(self.manifest_path, source_filter)
+        all_rows = self._read_manifest(
+            self.manifest_path,
+            source_filter=source_filter,
+            allow_mixed_sources=self.allow_mixed_sources,
+        )
         self.samples, self.classes, self.class_to_idx = self._filter_split(all_rows)
 
     def set_epoch(self, epoch: int) -> None:
@@ -133,48 +175,104 @@ class SignDataset(Dataset):
     def _read_manifest(
         manifest_path: Path,
         source_filter: Optional[Sequence[str]] = None,
+        allow_mixed_sources: bool = False,
     ) -> List[Dict[str, str]]:
         if not manifest_path.exists():
             raise FileNotFoundError(f"Manifest file not found: {manifest_path}")
 
         rows: List[Dict[str, str]] = []
         allowed_sources = {s.lower() for s in source_filter} if source_filter else None
-        with manifest_path.open("r", encoding="utf-8", newline="") as f:
+        sources_seen: set[str] = set()
+        with manifest_path.open("r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 src = (row.get("source") or "bisindo").strip().lower()
                 if allowed_sources and src not in allowed_sources:
                     continue
+                sources_seen.add(src)
                 rows.append(row)
+
+        if not rows:
+            raise ValueError(
+                f"Manifest '{manifest_path}' tidak memiliki baris data untuk source_filter={source_filter!r}."
+            )
+
+        if len(sources_seen) > 1 and not allow_mixed_sources:
+            raise ValueError(
+                f"Pencampuran dataset lintas bahasa isyarat terdeteksi di manifest '{manifest_path}': "
+                f"sources={sorted(sources_seen)}. BISINDO dan FSL-105 wajib dipisahkan (gunakan "
+                f"source_filter eksplisit atau manifest terpisah)."
+            )
         return rows
 
     def _filter_split(
         self, rows: List[Dict[str, str]]
     ) -> Tuple[List[Dict[str, Any]], List[str], Dict[str, int]]:
         # Build deterministic class list sorted by label id if present, else alphabetically
-        gloss_set = sorted({r.get("gloss", "").strip() for r in rows if r.get("gloss")})
+        gloss_set = sorted({(r.get("gloss") or "").strip() for r in rows if (r.get("gloss") or "").strip()})
+        if not gloss_set:
+            raise ValueError(f"Manifest '{self.manifest_path}' tidak memiliki kolom gloss yang valid.")
         class_to_idx: Dict[str, int] = {g: i for i, g in enumerate(gloss_set)}
 
         # Check if explicit integer labels are consistent
         explicit_map: Dict[str, int] = {}
-        for r in rows:
+        for line_idx, r in enumerate(rows, start=2):
             g = (r.get("gloss") or "").strip()
             lbl_str = (r.get("label") or "").strip()
-            if g and lbl_str.isdigit():
-                explicit_map[g] = int(lbl_str)
-        if len(explicit_map) == len(gloss_set) and set(explicit_map.values()) == set(range(len(gloss_set))):
+            if not g:
+                raise ValueError(f"Baris {line_idx} pada '{self.manifest_path}' memiliki gloss kosong.")
+            if lbl_str:
+                try:
+                    lbl_val = int(lbl_str)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Baris {line_idx} pada '{self.manifest_path}' memiliki label non-integer: {lbl_str!r}"
+                    ) from exc
+                if lbl_val < 0:
+                    raise ValueError(
+                        f"Baris {line_idx} pada '{self.manifest_path}' memiliki label negatif: {lbl_val}"
+                    )
+                if g in explicit_map and explicit_map[g] != lbl_val:
+                    raise ValueError(
+                        f"Inkonsistensi label untuk gloss '{g}' pada '{self.manifest_path}': "
+                        f"{explicit_map[g]} vs {lbl_val}"
+                    )
+                explicit_map[g] = lbl_val
+
+        if len(explicit_map) == len(gloss_set):
             class_to_idx = explicit_map
             gloss_set = [g for g, _ in sorted(explicit_map.items(), key=lambda kv: kv[1])]
 
+        # Guard anti-kebocoran: video_id dan kp_path tidak boleh bocor lintas split
+        vid_to_split: Dict[str, str] = {}
+        kp_to_split: Dict[str, str] = {}
+
         selected: List[Dict[str, Any]] = []
         if self.protocol == "si":
-            # Leave-one-signer-out protocol
-            all_signers = sorted({(r.get("signer") or r.get("signer_id") or "s1").strip() for r in rows})
+            # Leave-one-signer-out (Signer-Independent) protocol
+            raw_signers = [(r.get("signer") or r.get("signer_id") or "").strip() for r in rows]
+            if any(not s or s.lower() in {"unannotated", "unknown", "none"} for s in raw_signers):
+                raise ValueError(
+                    f"Protokol Signer-Independent (si) pada '{self.manifest_path}' membutuhkan "
+                    "anotasi signer_id yang valid (ditemukan signer kosong atau 'unannotated')."
+                )
+            all_signers = sorted(set(raw_signers))
+            if self.test_signer not in all_signers:
+                raise ValueError(
+                    f"test_signer='{self.test_signer}' tidak ditemukan pada daftar signer "
+                    f"manifest '{self.manifest_path}': {all_signers}"
+                )
             non_test = [s for s in all_signers if s != self.test_signer]
+            if not non_test:
+                raise ValueError(
+                    f"Protokol Signer-Independent (si) membutuhkan minimal 2 signer berbeda, "
+                    f"tetapi hanya ditemukan {all_signers}."
+                )
             val_signer = non_test[-1] if len(non_test) > 1 else None
+            split_glosses: Dict[str, set] = {"train": set(), "val": set(), "test": set()}
 
             for idx, r in enumerate(rows):
-                signer = (r.get("signer") or r.get("signer_id") or "s1").strip()
+                signer = (r.get("signer") or r.get("signer_id") or "").strip()
                 if signer == self.test_signer:
                     row_split = "test"
                 elif val_signer is not None and signer == val_signer:
@@ -183,33 +281,94 @@ class SignDataset(Dataset):
                     row_split = "val"
                 else:
                     row_split = "train"
+                split_glosses[row_split].add((r.get("gloss") or "").strip())
+
+                vid_id = (r.get("video_id") or r.get("id") or "").strip()
+                kp_rel = (r.get("kp_path") or r.get("keypoint_path") or "").strip()
+                if vid_id:
+                    prev = vid_to_split.get(vid_id)
+                    if prev is not None and prev != row_split:
+                        raise ValueError(
+                            f"Kebocoran video_id '{vid_id}' lintas split ({prev} vs {row_split}) "
+                            f"pada '{self.manifest_path}'."
+                        )
+                    vid_to_split[vid_id] = row_split
+                if kp_rel:
+                    prev_kp = kp_to_split.get(kp_rel)
+                    if prev_kp is not None and prev_kp != row_split:
+                        raise ValueError(
+                            f"Kebocoran kp_path '{kp_rel}' lintas split ({prev_kp} vs {row_split}) "
+                            f"pada '{self.manifest_path}'."
+                        )
+                    kp_to_split[kp_rel] = row_split
 
                 if row_split == self.split:
                     selected.append(r)
+
+            all_glosses = set(gloss_set)
+            self.si_coverage_report = {
+                sp: sorted(all_glosses - gl) for sp, gl in split_glosses.items() if gl
+            }
+            incomplete = {sp: miss for sp, miss in self.si_coverage_report.items() if miss}
+            if incomplete and not self.allow_partial_class_coverage:
+                raise ValueError(
+                    f"Protokol Signer-Independent (si) dengan test_signer='{self.test_signer}' tidak valid: "
+                    f"cakupan kelas tidak lengkap pada split {sorted(incomplete)} "
+                    f"(gloss hilang: { {k: v[:5] for k, v in incomplete.items()} }). "
+                    "Pilih test/val signer yang mencakup seluruh kelas atau set "
+                    "allow_partial_class_coverage=True secara eksplisit (hasil tidak boleh diklaim SI penuh)."
+                )
         else:
             # Signer-Dependent (SD) protocol
             for r in rows:
                 row_split = (r.get("split_sd") or r.get("split") or "train").strip().lower()
+                vid_id = (r.get("video_id") or r.get("id") or "").strip()
+                kp_rel = (r.get("kp_path") or r.get("keypoint_path") or "").strip()
+                if vid_id:
+                    prev = vid_to_split.get(vid_id)
+                    if prev is not None and prev != row_split:
+                        raise ValueError(
+                            f"Kebocoran video_id '{vid_id}' lintas split ({prev} vs {row_split}) "
+                            f"pada '{self.manifest_path}'."
+                        )
+                    vid_to_split[vid_id] = row_split
+                if kp_rel:
+                    prev_kp = kp_to_split.get(kp_rel)
+                    if prev_kp is not None and prev_kp != row_split:
+                        raise ValueError(
+                            f"Kebocoran kp_path '{kp_rel}' lintas split ({prev_kp} vs {row_split}) "
+                            f"pada '{self.manifest_path}'."
+                        )
+                    kp_to_split[kp_rel] = row_split
+
                 if row_split == self.split:
                     selected.append(r)
 
-        # Fallback if a small synthetic manifest doesn't have the requested split populated
-        if not selected and rows:
-            selected = list(rows)
+        if not selected:
+            raise ValueError(
+                f"Split '{self.split}' (protocol='{self.protocol}') tidak memiliki sampel (0 baris) "
+                f"pada manifest '{self.manifest_path}'. Pipeline menolak menyalin ulang split lain."
+            )
 
         processed: List[Dict[str, Any]] = []
         for r in selected:
             gloss = (r.get("gloss") or "").strip()
-            label = class_to_idx.get(gloss, 0)
+            if gloss not in class_to_idx:
+                raise ValueError(f"Gloss '{gloss}' tidak terdaftar pada peta kelas manifest.")
+            label = class_to_idx[gloss]
             kp_rel = (r.get("kp_path") or r.get("keypoint_path") or "").strip()
+            if not kp_rel:
+                raise ValueError(
+                    f"Baris video_id={r.get('video_id')!r} pada '{self.manifest_path}' tidak memiliki kp_path."
+                )
             rgb_rel = (r.get("rgb_path") or "").strip()
             processed.append(
                 {
                     "video_id": (r.get("video_id") or r.get("id") or f"vid_{len(processed)}").strip(),
-                    "source": (r.get("source") or "bisindo").strip(),
+                    "source": (r.get("source") or "bisindo").strip().lower(),
                     "gloss": gloss,
                     "label": int(label),
-                    "signer": (r.get("signer") or r.get("signer_id") or "s1").strip(),
+                    "signer": (r.get("signer") or r.get("signer_id") or "unannotated").strip(),
                     "kp_path": kp_rel,
                     "rgb_path": rgb_rel,
                 }
@@ -234,40 +393,52 @@ class SignDataset(Dataset):
         return cand3
 
     def _load_kp(self, rel_path: str, label: int, idx: int) -> np.ndarray:
-        if rel_path:
-            full_path = self._resolve_path(rel_path)
-            if full_path.exists():
-                if full_path.suffix == ".npz":
-                    with np.load(str(full_path)) as data:
-                        arr = data["kp"] if "kp" in data else data[list(data.keys())[0]]
-                        return arr.astype(np.float32)
-                elif full_path.suffix == ".npy":
-                    return np.load(str(full_path)).astype(np.float32)
+        if not rel_path:
+            raise ValueError(f"Kolom kp_path kosong pada baris index={idx}")
+        full_path = self._resolve_path(rel_path)
+        if not full_path.exists():
+            raise FileNotFoundError(
+                f"Berkas keypoint fisik tidak ditemukan: {full_path} (rel_path={rel_path!r}). "
+                "Synthetic keypoint fallback telah dinonaktifkan (Tahap A/A.1)."
+            )
+        if full_path.suffix == ".npz":
+            with np.load(str(full_path)) as data:
+                arr = data["kp"] if "kp" in data else data[list(data.keys())[0]]
+                kp = arr.astype(np.float32)
+        elif full_path.suffix == ".npy":
+            kp = np.load(str(full_path)).astype(np.float32)
+        else:
+            raise ValueError(f"Format ekstensi keypoint tidak didukung ({full_path.suffix}): {full_path}")
 
-        # Deterministic synthetic fallback if file is not on disk
-        rng = np.random.default_rng(self.base_seed + label * 997 + idx)
-        F = 32
-        kp = rng.normal(loc=0.5, scale=0.05, size=(F, NUM_KEYPOINTS, NUM_COORDS)).astype(np.float32)
-        kp[:, L_SHOULDER_IDX] = [0.4, 0.5, 0.0]
-        kp[:, R_SHOULDER_IDX] = [0.6, 0.5, 0.0]
-        # Class-conditional trajectory on hands
-        t_axis = np.linspace(0, 2 * np.pi, F, dtype=np.float32)[:, None]
-        phase = float(label) * 0.35
-        kp[:, LEFT_HAND_START:RIGHT_HAND_END, 0] += 0.12 * np.sin(t_axis + phase)
-        kp[:, LEFT_HAND_START:RIGHT_HAND_END, 1] += 0.12 * np.cos(t_axis + phase)
+        if kp.ndim != 3 or kp.shape[1:] != (NUM_KEYPOINTS, NUM_COORDS) or kp.shape[0] == 0:
+            raise ValueError(
+                f"Dimensi array keypoint tidak valid pada '{full_path}': "
+                f"diharapkan [F>=1, {NUM_KEYPOINTS}, {NUM_COORDS}], diperoleh {kp.shape}"
+            )
+        if not np.any(np.isfinite(kp)):
+            raise ValueError(f"Berkas keypoint '{full_path}' hanya berisi NaN/Inf (0 koordinat valid).")
         return kp
 
     def _load_rgb(self, rel_path: str, label: int, idx: int) -> np.ndarray:
         if rel_path:
             full_path = self._resolve_path(rel_path)
-            if full_path.exists():
-                arr = np.load(str(full_path)).astype(np.float32)
-                if arr.shape == (RGB_NUM_TOKENS, RGB_TOKEN_DIM):
-                    return arr
-        rng = np.random.default_rng(self.base_seed + label * 131 + idx * 7)
-        base = np.sin(np.arange(RGB_TOKEN_DIM, dtype=np.float32) * 0.05 + label * 0.4)
-        tokens = base[None, :] + rng.normal(0.0, 0.1, size=(RGB_NUM_TOKENS, RGB_TOKEN_DIM)).astype(np.float32)
-        return tokens.astype(np.float32)
+            if not full_path.exists():
+                raise FileNotFoundError(
+                    f"Berkas fitur RGB fisik tidak ditemukan: {full_path} (rel_path={rel_path!r}). "
+                    "Synthetic RGB token fallback telah dinonaktifkan (Tahap A/A.1)."
+                )
+            arr = np.load(str(full_path)).astype(np.float32)
+            if arr.shape != (RGB_NUM_TOKENS, RGB_TOKEN_DIM):
+                raise ValueError(
+                    f"Dimensi fitur RGB tidak valid pada '{full_path}': "
+                    f"diharapkan {(RGB_NUM_TOKENS, RGB_TOKEN_DIM)}, diperoleh {arr.shape}"
+                )
+            if not np.all(np.isfinite(arr)):
+                raise ValueError(f"Berkas fitur RGB '{full_path}' mengandung nilai NaN/Inf.")
+            return arr
+        # Bila rgb_path kosong (model berbasis pose murni), kembalikan matriks nol netral
+        # tanpa sinyal kelas sintetis (zero label leakage).
+        return np.zeros((RGB_NUM_TOKENS, RGB_TOKEN_DIM), dtype=np.float32)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         item = self.samples[idx]
@@ -305,13 +476,25 @@ class SignDataset(Dataset):
             np.full(len(PHONOLOGY_COLUMNS), -1, dtype=np.int64),
         )
 
+        if _TORCH_AVAILABLE:
+            return {
+                "pose": torch.from_numpy(pose),               # [64, 86, 3] float32
+                "mask": torch.from_numpy(mask),               # [64, 86] bool
+                "frame_mask": torch.from_numpy(frame_mask),   # [64] bool
+                "rgb": torch.from_numpy(rgb),                 # [8, 768] float32
+                "label": torch.tensor(item["label"], dtype=torch.long),
+                "phonology": torch.from_numpy(phono.copy()),  # [6] int64
+                "signer": item["signer"],
+                "gloss": item["gloss"],
+                "video_id": item["video_id"],
+            }
         return {
-            "pose": torch.from_numpy(pose),               # [64, 86, 3] float32
-            "mask": torch.from_numpy(mask),               # [64, 86] bool
-            "frame_mask": torch.from_numpy(frame_mask),   # [64] bool
-            "rgb": torch.from_numpy(rgb),                 # [8, 768] float32
-            "label": torch.tensor(item["label"], dtype=torch.long),
-            "phonology": torch.from_numpy(phono.copy()),  # [6] int64
+            "pose": pose,
+            "mask": mask,
+            "frame_mask": frame_mask,
+            "rgb": rgb,
+            "label": int(item["label"]),
+            "phonology": phono.copy(),
             "signer": item["signer"],
             "gloss": item["gloss"],
             "video_id": item["video_id"],

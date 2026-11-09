@@ -1,0 +1,17 @@
+{
+  "status": "VERIFIED WITH LIMITATIONS",
+  "artifacts_verified": true,
+  "training_history_verified": true,
+  "early_stopping_verified": true,
+  "data_leakage_detected": false,
+  "evaluation_protocol": "Signer-Dependent (SD)",
+  "recalculated_test_accuracy": 0.9913,
+  "recalculated_test_macro_f1": 0.9912,
+  "recalculated_test_top5_accuracy": 1.0,
+  "discrepancy_count": 0,
+  "limitations": [
+    "Evaluasi dilakukan pada protokol Signer-Dependent (SD), bukan Signer-Independent (LOSO)",
+    "Python runtime adalah versi beta (Python 3.11.0b4), perlu distandarkan ke Python 3.11.x stable untuk deployment produksi",
+    "Model M0 adalah klasifikasi kata isyarat terisolasi (ISLR), bukan continuous translation (CSLT)"
+  ]
+}

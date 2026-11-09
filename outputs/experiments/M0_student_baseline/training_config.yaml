@@ -1,0 +1,38 @@
+dataset:
+  manifest: data/manifest_wl_bisindo.csv
+  name: WL-BISINDO
+  num_classes: 32
+  num_keypoints: 86
+  seq_len: 64
+  sidecar: data/manifest_wl_bisindo_source_metadata.csv
+  splits:
+    test: 460
+    train: 960
+    val: 180
+  total_samples: 1600
+experiment_id: M0_student_baseline
+hardware:
+  cpu_architecture: AMD64
+  device: CPU
+  host_gpu: NVIDIA GeForce RTX 3050 (6GB) - Not used for M0 CPU baseline
+  python_version: 3.11.0b4 (main, Jul 11 2022, 15:47:56) [MSC v.1932 64 bit (AMD64)]
+model:
+  activation: gelu
+  d_model: 160
+  dim_feedforward: 640
+  dropout: 0.1
+  nhead: 4
+  num_layers: 4
+  type: StudentPoseTransformer
+protocol: SD
+seed: 42
+timestamp: '2026-11-08 02:24:44'
+training:
+  batch_size: 32
+  label_smoothing: 0.1
+  learning_rate: 0.001
+  max_epochs: 100
+  optimizer: AdamW
+  patience: 10
+  scheduler: ReduceLROnPlateau(factor=0.5, patience=4, min_lr=1e-5)
+  weight_decay: 0.01

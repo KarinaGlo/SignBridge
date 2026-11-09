@@ -1,0 +1,44 @@
+{
+  "experiment_id": "M0_student_baseline",
+  "date": "2026-11-08 02:50:39",
+  "status": "TRAINING COMPLETED",
+  "environment": {
+    "python": "3.11.0b4 (main, Jul 11 2022, 15:47:56) [MSC v.1932 64 bit (AMD64)]",
+    "torch": "2.2.2+cpu",
+    "numpy": "1.26.4",
+    "pandas": "3.0.6",
+    "scikit-learn": "1.9.1",
+    "matplotlib": "3.11.2"
+  },
+  "hardware": {
+    "device": "CPU",
+    "host_gpu": "NVIDIA GeForce RTX 3050 (6GB) - Not used for M0 CPU baseline",
+    "cpu_architecture": "AMD64"
+  },
+  "git": {
+    "commit": "b38b4da93b525f68edf4a9cfe6eb9331e13582e2",
+    "branch": "feature/dataset-acquisition"
+  },
+  "dataset": {
+    "name": "WL-BISINDO",
+    "classes": 32,
+    "total_samples": 1600,
+    "splits": {
+      "train": 960,
+      "val": 180,
+      "test": 460
+    }
+  },
+  "artifacts": [
+    "best_model.pt",
+    "last_model.pt",
+    "training_config.yaml",
+    "training_history.csv",
+    "evaluation_metrics.json",
+    "classification_report.csv",
+    "confusion_matrix.png",
+    "training_loss.png",
+    "training_accuracy.png",
+    "experiment_metadata.json"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "experiment": "M1_stgcn_baseline",
+  "status": "COMPLETED",
+  "protocol": "Signer-Dependent (SD)",
+  "test_accuracy": 0.9913,
+  "test_macro_f1": 0.9914,
+  "test_top5_accuracy": 1.0,
+  "parameter_count": 1096408,
+  "training_time_minutes": 774.07,
+  "epochs_trained": 89,
+  "best_epoch": 79
+}

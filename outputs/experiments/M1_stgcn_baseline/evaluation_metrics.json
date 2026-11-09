@@ -1,0 +1,18 @@
+{
+  "best_epoch": 79,
+  "validation_metrics": {
+    "val_loss": 0.712,
+    "val_accuracy": 0.9889
+  },
+  "test_metrics": {
+    "test_loss": 0.6986,
+    "test_accuracy": 0.9913,
+    "test_top5_accuracy": 1.0,
+    "test_macro_precision": 0.9924,
+    "test_macro_recall": 0.9912,
+    "test_macro_f1": 0.9914,
+    "test_weighted_f1": 0.9913,
+    "total_test_samples": 460,
+    "correct_test_samples": 456
+  }
+}
