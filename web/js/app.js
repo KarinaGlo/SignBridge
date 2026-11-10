@@ -16,7 +16,7 @@ import {
 import { buildNaturalSentence, glossToSentenceLocal, sentenceToConceptGlosses } from "./sentence.js";
 import { speakText, unlockSpeechAudio, SpeechListener } from "./speech.js";
 import { VisionManager, drawSkeleton86, generateReferenceSignKeypoints } from "./vision.js";
-import { SignRecognizer, SIGN_STATE } from "./recognizer.js";
+import { SignRecognizer, SIGN_STATE, isInSigningSpace, checkCameraFraming } from "./recognizer.js";
 import { FingerspellRecognizer } from "./fingerspell.js";
 import { RoomManager } from "./room.js";
 import { MultimodalRecorder } from "./recorder.js";
@@ -35,6 +35,7 @@ class SignBridgeApp {
     this.practiceStreak = 0;
     this.captionSizeIndex = 0;
     this.captionSizes = ["normal", "large", "xlarge"];
+    this.lastSpokenAt = 0;
 
     this.recognizer = new SignRecognizer({
       onStateChange: (info) => this.updateStateBadge(info),
@@ -55,9 +56,20 @@ class SignBridgeApp {
 
     this.vision = null;
     this.refAnimTimer = null;
+
+    // Instrumentasi Debug Real-Time (?debug=1 atau localStorage.getItem("signbridge_debug") === "1")
+    const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+    this.debugEnabled =
+      urlParams?.get("debug") === "1" ||
+      (typeof localStorage !== "undefined" && localStorage.getItem("signbridge_debug") === "1");
+    this.lastFrameTime = 0;
+    this.frameDeltas = [];
+    this.effectiveFps = 0;
+    this.lastHudUpdate = 0;
   }
 
   async init() {
+    this.setupDebugInstrumentation();
     this.bindNavigation();
     this.bindLandingPageInteractions();
     this.bindLiveTranslationControls();
@@ -250,13 +262,82 @@ class SignBridgeApp {
       videoEl,
       canvasEl,
       onFrameKeypoints: ({ kp86, rightHand21, leftHand21, hasVisibleHand }) => {
+        const now = performance.now();
+        if (this.lastFrameTime > 0) {
+          const delta = now - this.lastFrameTime;
+          this.frameDeltas.push(delta);
+          if (this.frameDeltas.length > 20) this.frameDeltas.shift();
+          const avgDelta = this.frameDeltas.reduce((a, b) => a + b, 0) / this.frameDeltas.length;
+          this.effectiveFps = Math.round(1000 / Math.max(1, avgDelta));
+        }
+        this.lastFrameTime = now;
+
+        // Hitung okupansi titik tangan non-zero
+        let lNonZero = 0, rNonZero = 0;
+        if (kp86) {
+          for (let i = 9; i < 30; i++) {
+            if (kp86[i] && (Math.abs(kp86[i][0]) > 1e-5 || Math.abs(kp86[i][1]) > 1e-5)) lNonZero++;
+          }
+          for (let i = 30; i < 51; i++) {
+            if (kp86[i] && (Math.abs(kp86[i][0]) > 1e-5 || Math.abs(kp86[i][1]) > 1e-5)) rNonZero++;
+          }
+        }
+
+        const inSpace = isInSigningSpace(kp86);
+        const framing = checkCameraFraming(kp86);
+        const lShoulder = kp86 ? kp86[1] : null;
+        const rShoulder = kp86 ? kp86[2] : null;
+        const midShoulderY = lShoulder && rShoulder ? (lShoulder[1] + rShoulder[1]) / 2 : 0.45;
+        const lowerBoundary = midShoulderY >= 0.50
+          ? Math.min(0.95, midShoulderY + (1.0 - midShoulderY) * 0.82)
+          : Math.min(0.85, midShoulderY + 0.38);
+        const lWrist = kp86 ? kp86[9] : null;
+        const rWrist = kp86 ? kp86[30] : null;
+
+        if (!framing.ok && now - (this._lastFramingAlertAt || 0) > 4000) {
+          this._lastFramingAlertAt = now;
+          const badge = document.getElementById("sign-state-badge");
+          if (badge && (this.recognizer?.state === SIGN_STATE.IDLE || !this.recognizer?.state)) {
+            badge.textContent = framing.code === "TOO_CLOSE"
+              ? "Mundur Sedikit (Terlalu Dekat)"
+              : "Naikkan Tangan Sedikit";
+            badge.style.opacity = "0.9";
+          }
+        }
+
+        if (this.debugEnabled && now - this.lastHudUpdate > 100) {
+          this.lastHudUpdate = now;
+          this.renderDebugHud({
+            fps: this.effectiveFps,
+            inSpace,
+            lWristY: lWrist ? lWrist[1]?.toFixed(2) : "NaN",
+            rWristY: rWrist ? rWrist[1]?.toFixed(2) : "NaN",
+            midShoulderY: midShoulderY.toFixed(2),
+            lowerBoundary: lowerBoundary.toFixed(2),
+            framingWarning: framing.warning,
+            lOcc: Math.round((lNonZero / 21) * 100),
+            rOcc: Math.round((rNonZero / 21) * 100),
+            state: this.recognizer?.state || "IDLE",
+            bufferFrames: this.recognizer?.activeBuffer?.length || 0,
+            hasVisibleHand
+          });
+        }
+
+        const activeHand = rightHand21 || leftHand21;
         if (this.recognitionMode === "fingerspell") {
-          const activeHand = rightHand21 || leftHand21;
           this.fingerspeller.pushHandFrame(activeHand);
         } else if (this.recognitionMode === "video") {
-          this.recognizer.pushFrame(kp86, { hasVisibleHand });
+          this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
         } else {
-          this.recognizer.pushFrame(kp86, { hasVisibleHand });
+          // Mode HIBRID (Default):
+          // 1. Eksekusi pengenal isyarat kata (BISINDO dinamis)
+          this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
+
+          // 2. Jika pengenal kata sedang IDLE dan ada satu tangan terangkat di ruang isyarat,
+          //    evaluasi ejaan abjad jari 26 huruf (A-Z)
+          if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) {
+            this.fingerspeller.pushHandFrame(activeHand);
+          }
         }
       }
     });
@@ -412,6 +493,104 @@ class SignBridgeApp {
     if (selectEl) selectEl.value = sizeName;
   }
 
+  setupDebugInstrumentation() {
+    if (typeof window === "undefined") return;
+
+    window.signbridgeDebug = {
+      enabled: this.debugEnabled,
+      toggle: (forceState) => {
+        this.debugEnabled = typeof forceState === "boolean" ? forceState : !this.debugEnabled;
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("signbridge_debug", this.debugEnabled ? "1" : "0");
+        }
+        const panel = document.getElementById("debug-overlay-panel");
+        if (panel) panel.style.display = this.debugEnabled ? "block" : "none";
+        console.info(`[SignBridge Debug] Debug HUD: ${this.debugEnabled ? "ON" : "OFF"}`);
+        return this.debugEnabled;
+      },
+      getMetrics: () => ({
+        fps: this.effectiveFps,
+        modelStatus: this.recognizer?.modelStatus,
+        labelsCount: this.recognizer?.labels?.length,
+        fingerspellStatus: this.fingerspeller?.modelStatus,
+        recognizerState: this.recognizer?.state,
+        activeBufferFrames: this.recognizer?.activeBuffer?.length,
+        lastClassification: this.recognizer?.lastDebug,
+        lastTTS: window.signbridgeDebug?.lastTTS
+      })
+    };
+
+    const panel = document.getElementById("debug-overlay-panel");
+    if (panel) {
+      panel.style.display = this.debugEnabled ? "block" : "none";
+    }
+  }
+
+  renderDebugHud(data) {
+    const panel = document.getElementById("debug-overlay-panel");
+    if (!panel) return;
+
+    const m0 = this.recognizer?.modelStatus || {};
+    const fs = this.fingerspeller?.modelStatus || {};
+    const lastClf = this.recognizer?.lastDebug;
+    const lastTTS = window.signbridgeDebug?.lastTTS;
+
+    const m0ReadyClass = m0.ready ? "ok" : "err";
+    const inSpaceClass = data.inSpace ? "ok" : "warn";
+    const clfSuccessClass = lastClf ? (lastClf.success ? "ok" : "warn") : "";
+
+    let top5Html = "-";
+    if (lastClf && Array.isArray(lastClf.top5)) {
+      top5Html = lastClf.top5
+        .map((t) => `${t.gloss}: ${(t.prob * 100).toFixed(0)}%`)
+        .join(" | ");
+    }
+
+    panel.innerHTML = `
+      <div class="hud-header">
+        <span>SIGNBRIDGE HUD (DEBUG=1)</span>
+        <span class="hud-val ${data.fps >= 20 ? 'ok' : data.fps >= 12 ? 'warn' : 'err'}">${data.fps || 0} FPS</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">M0 Model / Labels:</span>
+        <span class="hud-val ${m0ReadyClass}">${m0.ready ? 'READY (ONNX)' : 'FAILED'} / ${this.recognizer?.labels?.length || 0}</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">Fingerspell:</span>
+        <span class="hud-val ${fs.ready ? 'ok' : 'warn'}">${fs.ready ? 'READY' : 'STANDBY'} (26 A-Z)</span>
+      </div>
+      <div class="hud-section">
+        <div class="hud-row">
+          <span class="hud-label">State / Frames:</span>
+          <span class="hud-val">${data.state} (${data.bufferFrames}f)</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Signing Space:</span>
+          <span class="hud-val ${inSpaceClass}">${data.inSpace ? 'INSIDE' : 'OUTSIDE'} (Y: ${data.lWristY}/${data.rWristY} &lt; ${data.lowerBoundary})</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Hand Occ (L / R):</span>
+          <span class="hud-val">${data.lOcc}% / ${data.rOcc}%</span>
+        </div>
+      </div>
+      <div class="hud-section">
+        <div class="hud-row">
+          <span class="hud-label">Last Clf:</span>
+          <span class="hud-val ${clfSuccessClass}">${lastClf ? (lastClf.success ? `ACCEPTED: ${lastClf.gloss} (${(lastClf.confidence * 100).toFixed(0)}%)` : `REJECTED (${lastClf.rejectionReason})`) : 'NONE'}</span>
+        </div>
+        <div class="hud-row" style="font-size:0.62rem; color:#94a3b8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          Top-5: ${top5Html}
+        </div>
+      </div>
+      <div class="hud-section">
+        <div class="hud-row">
+          <span class="hud-label">TTS Audio:</span>
+          <span class="hud-val ${lastTTS?.status === 'speaking' || lastTTS?.status === 'finished' ? 'ok' : ''}">${lastTTS ? `"${lastTTS.text || ''}" [${lastTTS.status}]` : 'IDLE'}</span>
+        </div>
+      </div>
+    `;
+  }
+
   renderSpelledWord() {
     const el = document.getElementById("spelled-word-output");
     if (!el) return;
@@ -530,24 +709,72 @@ class SignBridgeApp {
   async handleSignPrediction(pred) {
     const top3El = document.getElementById("top3-predictions");
     if (top3El && pred && Array.isArray(pred.top3) && pred.top3.length > 0) {
+      const autoConf = APP_CONFIG.autoSpeakConfidenceThreshold || 0.50;
+      const candConf = APP_CONFIG.candidateConfidenceThreshold || 0.25;
+
       top3El.innerHTML = pred.top3
-        .map((item) => {
+        .filter((item) => item.confidence >= candConf)
+        .map((item, idx) => {
           const c = CLASSROOM_CONCEPTS.find((x) => x.bisindo === item.gloss);
           const fslTag = c ? ` / ${c.fsl}` : "";
-          return `<span class="state-pill" style="font-size:0.75rem;">${item.gloss}${fslTag} <strong>${Math.round(item.confidence * 100)}%</strong></span>`;
+          const isAutoAccept = item.confidence >= autoConf;
+          const pillStyle = isAutoAccept
+            ? "background:rgba(16,185,129,0.22); color:#047857; font-weight:700; cursor:pointer;"
+            : "background:rgba(245,158,11,0.18); color:#b45309; font-weight:600; cursor:pointer;";
+          const prefix = isAutoAccept ? "★ " : "✎ ";
+          const title = isAutoAccept
+            ? `Kata ${item.gloss} memenuhi syarat auto-speak (${Math.round(item.confidence * 100)}%)`
+            : `Ketuk untuk mengonfirmasi kata ${item.gloss} (${Math.round(item.confidence * 100)}%)`;
+          return `<button type="button" class="state-pill candidate-pill" data-candidate-gloss="${item.gloss}" data-candidate-conf="${item.confidence}" style="border:1px solid currentColor; font-size:0.75rem; ${pillStyle}" title="${title}">${prefix}${item.gloss}${fslTag} <strong>${Math.round(item.confidence * 100)}%</strong></button>`;
         })
         .join("");
+
+      top3El.querySelectorAll(".candidate-pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const gloss = btn.getAttribute("data-candidate-gloss");
+          const conf = parseFloat(btn.getAttribute("data-candidate-conf")) || 0.8;
+          unlockSpeechAudio();
+          this.appendGloss(gloss, conf);
+          if (this.autoSpeak) {
+            this.speakCurrentSentence(gloss);
+          }
+        });
+      });
     }
 
-    if (pred && pred.success && pred.gloss) {
+    if (pred && pred.canAutoSpeak && pred.gloss) {
+      const now = performance.now();
+      const lastGloss = this.accumulatedGlosses[this.accumulatedGlosses.length - 1];
+      if (
+        now - this.lastSpokenAt < (APP_CONFIG.speechCooldownMs || 1200) &&
+        lastGloss === pred.gloss
+      ) {
+        // Abaikan pemicuan berulang dalam jeda cooldown singkat
+        return;
+      }
+
       const concept = CLASSROOM_CONCEPTS.find((c) => c.bisindo === pred.gloss);
       await this.appendGloss(pred.gloss, pred.confidence || 0.90);
 
       if (this.autoSpeak) {
+        this.lastSpokenAt = now;
         const isID = this.bridgeDirection === "ID-PH";
         const wordToSpeak = concept ? (isID ? concept.id_text : concept.fil_text) : pred.gloss;
         const textToSpeak = this.accumulatedGlosses.length <= 3 ? this.currentSentence : wordToSpeak;
         this.speakCurrentSentence(textToSpeak);
+      }
+    } else if (pred && pred.candidateAvailable && !pred.canAutoSpeak) {
+      // Tampilkan notifikasi transparan di banner subtitle bahwa gerakan terdeteksi tapi butuh konfirmasi
+      const outEl = document.getElementById("natural-sentence-output");
+      if (outEl && this.accumulatedGlosses.length === 0) {
+        const prevText = outEl.textContent;
+        outEl.innerHTML = `<span style="color:#d97706; font-weight:600;">Terdeteksi: "${pred.candidateGloss}" (${Math.round((pred.confidence || 0) * 100)}%). Ketuk tombol kandidat di bawah jika benar, atau peragakan lebih tegas.</span>`;
+        if (this._candidateHintTimer) clearTimeout(this._candidateHintTimer);
+        this._candidateHintTimer = setTimeout(() => {
+          if (this.accumulatedGlosses.length === 0 && outEl.textContent.includes("Terdeteksi:")) {
+            outEl.textContent = prevText || "Menunggu deret isyarat...";
+          }
+        }, 4000);
       }
     } else if (pred && pred.error) {
       console.warn("[App] Prediksi isyarat tidak berhasil:", pred.error);
@@ -916,13 +1143,41 @@ class SignBridgeApp {
     }, 45);
   }
 
-  updateStateBadge({ state, frames }) {
+  updateStateBadge({ state, frames, reason, candidate, confidence }) {
     const badge = document.getElementById("sign-state-badge");
     if (!badge) return;
+
+    if (reason === "needs_confirmation") {
+      badge.textContent = `Konfirmasi: ${candidate || "Isyarat"} (${Math.round((confidence || 0) * 100)}%) — Ketuk di bawah`;
+      badge.style.opacity = "1";
+      return;
+    }
+    if (reason === "below_confidence") {
+      badge.textContent = `Gerakan Lemah (${Math.round((confidence || 0) * 100)}%) — Ulangi lebih tegas`;
+      badge.style.opacity = "0.9";
+      return;
+    }
+    if (reason === "below_margin") {
+      badge.textContent = `Ambiguitas Gerakan (${candidate || "Isyarat"}) — Ulangi`;
+      badge.style.opacity = "0.9";
+      return;
+    }
+    if (reason === "stroke-too-short") {
+      badge.textContent = "Gerakan Terlalu Singkat — Ulangi penuh";
+      badge.style.opacity = "0.85";
+      return;
+    }
+    if (reason === "hands-resting") {
+      badge.textContent = "Posisi Netral (Tangan Istirahat)";
+      badge.style.opacity = "0.75";
+      return;
+    }
+
+    badge.style.opacity = "1";
     const labelMap = {
-      IDLE: "Mengenali Isyarat (Idle)",
+      IDLE: "Siap Berisyarat (Menunggu Gerakan)",
       RECORDING: `Merekam Gerakan (${frames || 1} frame)`,
-      CLASSIFYING: "Mencocokkan Database...",
+      CLASSIFYING: "Inferensi M0 ONNX...",
       SENTENCE: "Isyarat Dikenali",
       SPEAKING: "Menyuarakan (TTS)"
     };

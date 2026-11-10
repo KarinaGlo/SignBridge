@@ -4,7 +4,7 @@
  * Menyimpan aset statis (HTML, CSS, JS) dan model ONNX di Cache Storage.
  */
 
-const CACHE_NAME = "signbridge-asean-v6";
+const CACHE_NAME = "signbridge-asean-v7";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -30,7 +30,7 @@ const CORE_ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).catch(() => { })
   );
   self.skipWaiting();
 });

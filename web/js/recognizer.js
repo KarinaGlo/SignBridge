@@ -42,6 +42,83 @@ export function hasDetectedHands(kp86) {
 }
 
 /**
+ * Periksa apakah tangan berada dalam ruang isyarat aktif (signing space):
+ * Dari sekitar dada bawah / ulu hati ke atas (bukan tangan jatuh di pangkuan / meja).
+ * Batas bawah adaptif terhadap jarak kamera: jika pundak pengguna berada di bawah frame
+ * (mis. midShoulderY >= 0.50 saat duduk dekat webcam), lowerBoundary diperluas ke 0.95.
+ */
+export function isInSigningSpace(kp86) {
+  if (!kp86) return false;
+  const lShoulder = kp86[1];
+  const rShoulder = kp86[2];
+  const midShoulderY = isNonZeroPoint(lShoulder) && isNonZeroPoint(rShoulder)
+    ? (lShoulder[1] + rShoulder[1]) / 2
+    : 0.45;
+
+  // Batas bawah adaptif:
+  // Jarak normal (midShoulderY < 0.50): midShoulderY + 0.38, max 0.85.
+  // Jarak dekat (midShoulderY >= 0.50): perluas proporsional hingga max 0.95.
+  const lowerBoundary = midShoulderY >= 0.50
+    ? Math.min(0.95, midShoulderY + (1.0 - midShoulderY) * 0.82)
+    : Math.min(0.85, midShoulderY + 0.38);
+
+  const lWrist = kp86[9];
+  const lIndexTip = kp86[17];
+  const lMiddleTip = kp86[21];
+
+  const rWrist = kp86[30];
+  const rIndexTip = kp86[38];
+  const rMiddleTip = kp86[42];
+
+  const lActive =
+    (isNonZeroPoint(lWrist) && lWrist[1] < lowerBoundary) ||
+    (isNonZeroPoint(lIndexTip) && lIndexTip[1] < lowerBoundary) ||
+    (isNonZeroPoint(lMiddleTip) && lMiddleTip[1] < lowerBoundary);
+
+  const rActive =
+    (isNonZeroPoint(rWrist) && rWrist[1] < lowerBoundary) ||
+    (isNonZeroPoint(rIndexTip) && rIndexTip[1] < lowerBoundary) ||
+    (isNonZeroPoint(rMiddleTip) && rMiddleTip[1] < lowerBoundary);
+
+  return lActive || rActive;
+}
+
+/**
+ * Evaluasi jarak dan framing kamera pengguna untuk mendeteksi posisi terlalu dekat
+ * atau tangan yang terpotong di batas frame.
+ */
+export function checkCameraFraming(kp86) {
+  if (!kp86) return { ok: true, warning: null, midShoulderY: null };
+  const lShoulder = kp86[1];
+  const rShoulder = kp86[2];
+  const hasShoulders = isNonZeroPoint(lShoulder) && isNonZeroPoint(rShoulder);
+  const midShoulderY = hasShoulders ? (lShoulder[1] + rShoulder[1]) / 2 : null;
+
+  if (midShoulderY !== null && midShoulderY > 0.55) {
+    return {
+      ok: false,
+      warning: "Posisi terlalu dekat dengan kamera. Mundur sedikit agar dada dan kedua tangan terlihat utuh.",
+      code: "TOO_CLOSE",
+      midShoulderY
+    };
+  }
+
+  const wrists = [kp86[9], kp86[30]].filter(isNonZeroPoint);
+  for (const w of wrists) {
+    if (w[1] > 0.96) {
+      return {
+        ok: false,
+        warning: "Tangan berada di batas bawah layar. Mundur atau naikkan posisi tangan sedikit.",
+        code: "HAND_TRUNCATED_BOTTOM",
+        midShoulderY
+      };
+    }
+  }
+
+  return { ok: true, warning: null, midShoulderY };
+}
+
+/**
  * Hitung energi gerakan (kecepatan rata-rata L2 pada titik tangan yang terlihat)
  * antara dua frame berturut-turut [86][3].
  */
@@ -263,9 +340,16 @@ export class SignRecognizer {
     this.holdBuffer = [];
     this.prevFrame = null;
     this.stillCounter = 0;
-    this.lastInferAt = 0;
+    this.lastInferAt = -Infinity;
     this.lockedSignature = "";
-    this.minConfidence = APP_CONFIG.confidenceThreshold || 0.55;
+    this.outOfSpaceFrames = 0;
+    this.candidateConfidenceThreshold = APP_CONFIG.candidateConfidenceThreshold || 0.25;
+    this.autoSpeakConfidenceThreshold = APP_CONFIG.autoSpeakConfidenceThreshold || APP_CONFIG.confidenceThreshold || 0.50;
+    this.autoSpeakMarginThreshold = APP_CONFIG.autoSpeakMarginThreshold || APP_CONFIG.marginThreshold || 0.10;
+    this.minConfidence = this.autoSpeakConfidenceThreshold;
+    this.fps = 20;
+    this.lastFrameTimestamp = 0;
+    this.lastDebug = null;
 
     this.modelStatus = {
       ready: false,
@@ -274,6 +358,19 @@ export class SignRecognizer {
       labelsCount: this.labels.length,
       error: null
     };
+  }
+
+  /**
+   * Hitung batas jumlah frame secara adaptif terhadap FPS aktual
+   * agar segmentasi gerakan konsisten di berbagai perangkat dan refresh rate.
+   */
+  getDynamicThresholds(fps = 20) {
+    const safeFps = Math.max(10, Math.min(60, Number(fps) || 20));
+    const minActive = Math.max(4, Math.round(safeFps * ((APP_CONFIG.minActiveDurationMs || 250) / 1000)));
+    const pauseFrames = Math.max(3, Math.round(safeFps * ((APP_CONFIG.pauseDurationMs || 250) / 1000)));
+    const maxActive = Math.min(64, Math.max(20, Math.round(safeFps * ((APP_CONFIG.maxActiveDurationMs || 2200) / 1000))));
+    const holdFrames = Math.max(6, Math.round(safeFps * ((APP_CONFIG.holdDurationMs || 500) / 1000)));
+    return { minActive, pauseFrames, maxActive, holdFrames, fps: safeFps };
   }
 
   async init() {
@@ -305,6 +402,11 @@ export class SignRecognizer {
       return { ...this.modelStatus };
     }
 
+    // Konfigurasi WebAssembly threading yang aman sesuai isolasi origin browser
+    if (window.ort.env && window.ort.env.wasm) {
+      window.ort.env.wasm.numThreads = Boolean(window.crossOriginIsolated) ? 4 : 1;
+    }
+
     // 3. Buat sesi inferensi ONNX
     try {
       this.session = await window.ort.InferenceSession.create(this.modelUrl, {
@@ -331,26 +433,66 @@ export class SignRecognizer {
 
   /**
    * Masukkan 1 frame keypoint [86][3] dari kamera.
-   * Hanya memproses jika tangan benar-benar terlihat di kamera (hasDetectedHands).
+   * Hanya memproses jika tangan terdeteksi dan berada di dalam ruang isyarat aktif (signing space).
    * Mengunci hasil (lockedSignature) setelah satu isyarat dikenali agar TIDAK berganti-ganti kata sendiri.
    */
-  async pushFrame(kp86, { hasVisibleHand = true } = {}) {
-    // 1. Jika tidak ada tangan di depan kamera -> Reset ke IDLE dan buka kunci untuk isyarat berikutnya
-    if (!hasVisibleHand || !hasDetectedHands(kp86)) {
+  async pushFrame(kp86, { hasVisibleHand = true, timestamp = null } = {}) {
+    const hasHand = hasVisibleHand && hasDetectedHands(kp86);
+    const inSpace = hasHand && isInSigningSpace(kp86);
+    const now = typeof timestamp === "number" ? timestamp : performance.now();
+
+    // Estimasi FPS dinamis untuk menghitung batasan waktu (ms) secara akurat
+    if (this.lastFrameTimestamp && now > this.lastFrameTimestamp) {
+      const dt = now - this.lastFrameTimestamp;
+      if (dt > 8 && dt < 400) {
+        const instantFps = 1000 / dt;
+        this.fps = this.fps ? this.fps * 0.85 + instantFps * 0.15 : instantFps;
+      }
+    }
+    this.lastFrameTimestamp = now;
+    const { minActive, pauseFrames, maxActive, holdFrames } = this.getDynamicThresholds(this.fps || 20);
+
+    // 1. Jika tidak ada tangan atau tangan berada di posisi istirahat (di bawah dada/di pangkuan)
+    if (!inSpace) {
+      this.outOfSpaceFrames += 1;
+
+      // Grace period: jika baru 1 atau 2 frame dropped tracking saat sedang RECORDING, jangan langsung hapus buffer
+      if (this.state === SIGN_STATE.RECORDING && this.outOfSpaceFrames < 3) {
+        return null;
+      }
+
+      // Jika sebelumnya sedang merekam gerakan yang cukup panjang, tuntaskan klasifikasi
+      if (
+        this.state === SIGN_STATE.RECORDING &&
+        this.activeBuffer.length >= minActive &&
+        now - this.lastInferAt >= 600
+      ) {
+        const seqToClassify = this.activeBuffer.slice();
+        this.activeBuffer = [];
+        this.holdBuffer = [];
+        this.stillCounter = 0;
+        this.outOfSpaceFrames = 0;
+        this.prevFrame = null;
+        this.lastInferAt = now;
+        return await this.classifySequence(seqToClassify);
+      }
+
       this.activeBuffer = [];
       this.holdBuffer = [];
       this.stillCounter = 0;
       this.prevFrame = null;
       this.lockedSignature = "";
       if (this.state !== SIGN_STATE.IDLE) {
-        this.setState(SIGN_STATE.IDLE, { frames: 0, energy: 0 });
+        this.setState(SIGN_STATE.IDLE, { reason: "hands-resting", frames: 0, energy: 0 });
       }
       return null;
     }
 
+    // Tangan valid dalam signing space: reset counter out-of-space
+    this.outOfSpaceFrames = 0;
+
     const energy = computeHandMotionEnergy(this.prevFrame, kp86);
     this.prevFrame = kp86;
-    const now = performance.now();
 
     // Periksa apakah postur tangan saat ini masih sama dengan isyarat yang baru saja diucapkan
     const currentPhono = extractSequencePhonology([kp86]);
@@ -359,7 +501,7 @@ export class SignRecognizer {
       return null;
     }
 
-    // Jika pengguna menggerakkan tangan secara sengaja (energy >= motionStartThreshold)
+    // 2. Jika pengguna menggerakkan tangan secara sengaja (energy >= motionStartThreshold)
     if (energy >= APP_CONFIG.motionStartThreshold) {
       this.lockedSignature = ""; // Buka kunci karena ada gerakan baru
       this.holdBuffer = [];
@@ -368,7 +510,7 @@ export class SignRecognizer {
       this.setState(SIGN_STATE.RECORDING, { frames: this.activeBuffer.length, energy });
 
       // Jika sudah mencapai batas frame maksimum gerakan, langsung klasifikasikan
-      if (this.activeBuffer.length >= APP_CONFIG.maxActiveFrames && now - this.lastInferAt >= 1200) {
+      if (this.activeBuffer.length >= maxActive && now - this.lastInferAt >= 1000) {
         const seqToClassify = this.activeBuffer.slice();
         this.activeBuffer = [];
         this.lastInferAt = now;
@@ -377,13 +519,13 @@ export class SignRecognizer {
       return null;
     }
 
-    // Jika sedang merekam gerakan aktif lalu tangan berhenti sejenak (jeda selesai berisyarat)
+    // 3. Jika sedang merekam gerakan aktif lalu tangan berhenti sejenak (jeda selesai berisyarat)
     if (this.state === SIGN_STATE.RECORDING && this.activeBuffer.length > 0) {
       this.activeBuffer.push(kp86);
       this.stillCounter += 1;
 
-      if (this.stillCounter >= APP_CONFIG.pauseFramesToClassify) {
-        if (this.activeBuffer.length >= APP_CONFIG.minActiveFrames && now - this.lastInferAt >= 1000) {
+      if (this.stillCounter >= pauseFrames) {
+        if (this.activeBuffer.length >= minActive && now - this.lastInferAt >= 600) {
           const seqToClassify = this.activeBuffer.slice();
           this.activeBuffer = [];
           this.stillCounter = 0;
@@ -392,21 +534,28 @@ export class SignRecognizer {
         } else {
           this.activeBuffer = [];
           this.stillCounter = 0;
-          this.setState(SIGN_STATE.IDLE, { energy });
+          this.setState(SIGN_STATE.IDLE, { energy, reason: "stroke-too-short" });
         }
       }
       return null;
     }
 
-    // 2. Dukungan Isyarat Statis (seperti SAYA menunjuk dada)
-    if (currentPhono.signature !== this.lockedSignature && now - this.lastInferAt >= 1400) {
+    // 4. Dukungan Isyarat Statis Terarah (HANYA jika tangan di area atas: Dahi, Muka, atau Dada)
+    //    Lokasi 0=Kepala/Dahi, 1=Mulut/Dagu, 2=Dada. JANGAN aktif jika di ruang netral bawah.
+    if (
+      currentPhono.location <= 2 &&
+      currentPhono.signature !== this.lockedSignature &&
+      now - this.lastInferAt >= 1000
+    ) {
       this.holdBuffer.push(kp86);
-      if (this.holdBuffer.length >= (APP_CONFIG.holdFramesToClassify || 10)) {
+      if (this.holdBuffer.length >= holdFrames) {
         const seqToClassify = this.holdBuffer.slice();
         this.holdBuffer = [];
         this.lastInferAt = now;
         return await this.classifySequence(seqToClassify);
       }
+    } else {
+      this.holdBuffer = [];
     }
 
     return null;
@@ -476,7 +625,8 @@ export class SignRecognizer {
     }
 
     // 3. Pemeriksaan ketersediaan model ONNX
-    if (!this.session || typeof window === "undefined" || !window.ort) {
+    const canRunSession = Boolean(this.session && typeof this.session.run === "function");
+    if (!canRunSession) {
       const errMessage = this.modelStatus?.error || "Model ONNX M0 belum dimuat atau tidak tersedia di runtime.";
       const errorResult = {
         success: false,
@@ -522,7 +672,16 @@ export class SignRecognizer {
     // 5. Eksekusi inferensi ONNX Runtime Web
     let logitsData = null;
     try {
-      const tensor = new window.ort.Tensor("float32", flat, [1, SEQ_LEN, NUM_NODES, NUM_COORDS]);
+      const TensorClass =
+        (typeof window !== "undefined" && window.ort && window.ort.Tensor) ||
+        class FallbackTensor {
+          constructor(type, data, dims) {
+            this.type = type;
+            this.data = data;
+            this.dims = dims;
+          }
+        };
+      const tensor = new TensorClass("float32", flat, [1, SEQ_LEN, NUM_NODES, NUM_COORDS]);
       const outputs = await this.session.run({ keypoints: tensor });
       logitsData = outputs.logits ? outputs.logits.data : Object.values(outputs)[0]?.data;
 
@@ -572,25 +731,85 @@ export class SignRecognizer {
 
     indexed.sort((a, b) => b.confidence - a.confidence);
 
+    const top5 = indexed.slice(0, 5);
     const top3 = indexed.slice(0, 3);
     const best = top3[0];
     const latencyMs = Math.max(5, Math.round(performance.now() - t0));
 
+    const candidateConf = this.candidateConfidenceThreshold || 0.25;
+    const autoSpeakConf = this.minConfidence !== undefined ? this.minConfidence : (this.autoSpeakConfidenceThreshold || 0.50);
+    const autoSpeakMargin = this.autoSpeakMarginThreshold || 0.10;
+    const margin = top3.length > 1 ? best.confidence - top3[1].confidence : best.confidence;
+
+    const canAutoSpeak = best.confidence >= autoSpeakConf && margin >= autoSpeakMargin;
+    const candidateAvailable = best.confidence >= candidateConf;
+
+    let rejectionReason = null;
+    if (!canAutoSpeak) {
+      if (best.confidence < candidateConf) {
+        rejectionReason = "below_confidence";
+      } else if (best.confidence < autoSpeakConf) {
+        rejectionReason = "needs_confirmation";
+      } else if (margin < autoSpeakMargin) {
+        rejectionReason = "below_margin";
+      }
+    }
+
     const result = {
-      success: true,
+      success: canAutoSpeak,
+      canAutoSpeak,
+      candidateAvailable,
       source: "onnx-m0-neural",
-      gloss: best.gloss,
-      fsl: best.fsl,
-      id_text: best.id_text,
-      fil_text: best.fil_text,
-      guide: best.guide,
-      phonology: obs, // Fitur fonologi Stokoe hanya sebagai metadata diagnostik
+      gloss: canAutoSpeak ? best.gloss : null,
+      fsl: canAutoSpeak ? best.fsl : null,
+      id_text: canAutoSpeak ? best.id_text : null,
+      fil_text: canAutoSpeak ? best.fil_text : null,
+      guide: canAutoSpeak ? best.guide : "",
+      candidateGloss: best.gloss,
+      candidateConfidence: best.confidence,
       confidence: best.confidence,
+      margin,
       top3,
+      top5: top5.map((t) => ({ gloss: t.gloss, confidence: t.confidence })),
+      rejectionReason: rejectionReason || "accepted",
+      phonology: obs, // Fitur fonologi Stokoe hanya sebagai metadata diagnostik
       latencyMs
     };
 
-    this.setState(SIGN_STATE.SENTENCE, result);
+    this.lastDebug = {
+      timestamp: Date.now(),
+      success: canAutoSpeak,
+      canAutoSpeak,
+      candidateAvailable,
+      rejectionReason: rejectionReason || "accepted",
+      gloss: best.gloss,
+      confidence: best.confidence,
+      margin,
+      candidateConf,
+      autoSpeakConf,
+      autoSpeakMargin,
+      latencyMs,
+      top5: top5.map((t) => ({ gloss: t.gloss, prob: Math.round(t.confidence * 1000) / 1000 })),
+      rawFrames: rawSequence ? rawSequence.length : 0
+    };
+
+    if (typeof window !== "undefined" && window.signbridgeDebug) {
+      window.signbridgeDebug.lastClassification = { ...this.lastDebug };
+    }
+
+    if (canAutoSpeak) {
+      this.lockedSignature = obs.signature;
+      this.setState(SIGN_STATE.SENTENCE, result);
+    } else {
+      this.setState(SIGN_STATE.IDLE, {
+        reason: rejectionReason,
+        candidate: best.gloss,
+        confidence: best.confidence,
+        margin,
+        candidateAvailable
+      });
+    }
+
     this.onPrediction(result);
     return result;
   }

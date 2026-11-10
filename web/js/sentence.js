@@ -205,32 +205,76 @@ export function glossToSentenceLocal(glossList, lang = "id") {
   return cap + (isQuestion ? "?" : ".");
 }
 
+// State circuit-breaker untuk ketersediaan server endpoint /sentence
+let isServerSentenceEndpointActive = true;
+let lastServerEndpointAttempt = 0;
+const SERVER_RETRY_INTERVAL_MS = 60000; // Coba kembali setelah 60 detik jika sebelumnya gagal
+
 /**
- * Konstruksi kalimat dengan fallback otomatis:
- * Mencoba endpoint server POST /sentence (IndoT5/mT5) jika tersedia,
- * dan kembali ke glossToSentenceLocal (B0) bila luring/gagal.
+ * Reset status ketersediaan server endpoint /sentence (berguna untuk pengujian atau jika backend baru dinyalakan).
+ */
+export function resetServerSentenceStatus() {
+  isServerSentenceEndpointActive = true;
+  lastServerEndpointAttempt = 0;
+}
+
+/**
+ * Konstruksi kalimat dengan fallback otomatis & perlindungan HTTP 501:
+ * 1. Jika apiBaseUrl kosong ("") -> Langsung gunakan B0-local tanpa mengirim HTTP POST yang tidak perlu ke server statis.
+ * 2. Jika apiBaseUrl didefinisikan dan endpoint aktif -> Panggil endpoint backend POST /sentence.
+ * 3. Jika backend mengembalikan 501 / 404 / error jaringan -> Aktifkan circuit-breaker dan fallback ke B0-local.
  */
 export async function buildNaturalSentence(glossList, { apiBaseUrl = "", lang = "id", preferServer = true } = {}) {
   const localSentence = glossToSentenceLocal(glossList, lang);
-  if (!preferServer || !glossList || glossList.length === 0) {
+  if (!glossList || glossList.length === 0) {
+    return { text: localSentence, source: "B0-local" };
+  }
+
+  // Jika apiBaseUrl tidak dikonfigurasi atau preferServer bernilai false -> gunakan pemrosesan lokal B0 murni.
+  // Ini mengeliminasi request HTTP 501 ke server statis (seperti python http.server pada localhost:8000).
+  const trimmedUrl = String(apiBaseUrl || "").trim().replace(/\/+$/, "");
+  if (!trimmedUrl || !preferServer) {
+    return { text: localSentence, source: "B0-local" };
+  }
+
+  // Periksa apakah server endpoint sedang dalam masa cooldown circuit-breaker
+  const now = Date.now();
+  if (!isServerSentenceEndpointActive && (now - lastServerEndpointAttempt) < SERVER_RETRY_INTERVAL_MS) {
     return { text: localSentence, source: "B0-local" };
   }
 
   try {
     const glossStr = Array.isArray(glossList) ? glossList.join(" ") : String(glossList);
-    const resp = await fetch(`${apiBaseUrl}/sentence`, {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
+    const resp = await fetch(`${trimmedUrl}/sentence`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gloss: glossStr, lang })
+      body: JSON.stringify({ gloss: glossStr, lang }),
+      signal: controller ? controller.signal : undefined
     });
+
+    if (timeoutId) clearTimeout(timeoutId);
+
     if (resp.ok) {
       const data = await resp.json();
       if (data && data.text) {
+        isServerSentenceEndpointActive = true;
         return { text: data.text, source: data.model || "T2-server" };
+      }
+    } else {
+      // Jika server mengembalikan 501 (Not Implemented) atau 404 (Not Found) -> Server tidak mendukung endpoint ini
+      if (resp.status === 501 || resp.status === 404 || resp.status === 405) {
+        isServerSentenceEndpointActive = false;
+        lastServerEndpointAttempt = now;
+        console.info(`[Sentence] Endpoint ${trimmedUrl}/sentence mengembalikan HTTP ${resp.status}. Beralih ke pemrosesan lokal B0.`);
       }
     }
   } catch (_err) {
-    // Offline atau server tidak aktif -> gunakan B0 lokal
+    // Offline atau server tidak aktif -> aktifkan circuit-breaker dan gunakan B0 lokal
+    isServerSentenceEndpointActive = false;
+    lastServerEndpointAttempt = now;
   }
   return { text: localSentence, source: "B0-local" };
 }

@@ -21,13 +21,21 @@ export const APP_CONFIG = {
   numNodes: 86,
   numCoords: 3,
   cropSize: 224,
-  motionStartThreshold: 0.012,
-  motionStopThreshold: 0.007,
-  minActiveFrames: 7,
-  holdFramesToClassify: 10,
-  maxActiveFrames: 36,
-  pauseFramesToClassify: 5,
-  confidenceThreshold: 0.55
+  motionStartThreshold: 0.015,       // Ambang mulai gerakan aktif tangan
+  motionStopThreshold: 0.008,        // Ambang tangan selesai bergerak
+  minActiveDurationMs: 250,          // Durasi minimum gerakan aktif (ms)
+  pauseDurationMs: 250,              // Durasi jeda setelah gerakan untuk finalisasi stroke (ms)
+  maxActiveDurationMs: 2200,         // Durasi maksimum sekuens gerakan (ms)
+  minActiveFrames: 6,               // Minimal frame gerakan aktif (fallback bila FPS belum terukur)
+  holdFramesToClassify: 12,         // Frame isyarat tahan statis di ruang isyarat aktif
+  maxActiveFrames: 48,              // Maksimal frame gerakan (fallback)
+  pauseFramesToClassify: 5,         // Frame diam setelah gerakan untuk finalisasi (fallback)
+  candidateConfidenceThreshold: 0.25,// Ambang batas tampil sebagai tombol kandidat di UI
+  autoSpeakConfidenceThreshold: 0.50,// Ambang batas auto-terima dan langsung disuarakan TTS
+  autoSpeakMarginThreshold: 0.10,    // Selisih probabilitas top-1 terhadap top-2 untuk auto-bicara
+  confidenceThreshold: 0.35,        // Ambang batas penerimaan moderat
+  marginThreshold: 0.08,            // Selisih probabilitas moderat
+  speechCooldownMs: 1200            // Jeda minimum antar ucapan TTS otomatis (1.2 detik)
 };
 
 /**
