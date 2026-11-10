@@ -1334,6 +1334,70 @@ a {
 }
 
 /* Badge Status di Atas Video */
+.debug-hud-overlay {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 30;
+  max-width: 320px;
+  background: rgba(10, 17, 28, 0.92);
+  border: 1px solid rgba(16, 184, 166, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.debug-hud-overlay .hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+  color: #2dd4bf;
+  letter-spacing: 0.04em;
+}
+
+.debug-hud-overlay .hud-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+
+.debug-hud-overlay .hud-label {
+  color: #94a3b8;
+}
+
+.debug-hud-overlay .hud-val {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.debug-hud-overlay .hud-val.ok {
+  color: #34d399;
+}
+
+.debug-hud-overlay .hud-val.warn {
+  color: #fbbf24;
+}
+
+.debug-hud-overlay .hud-val.err {
+  color: #f87171;
+}
+
+.debug-hud-overlay .hud-section {
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-top: 0.3rem;
+  margin-top: 0.3rem;
+}
+
 .viewport-overlay-badges {
   position: absolute;
   top: 1rem;

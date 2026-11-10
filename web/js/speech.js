@@ -53,13 +53,33 @@ export function playRecognitionChime() {
   } catch (_e) {}
 }
 
+let cachedVoices = [];
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  cachedVoices = window.speechSynthesis.getVoices() || [];
+  window.speechSynthesis.onvoiceschanged = () => {
+    try {
+      cachedVoices = window.speechSynthesis.getVoices() || [];
+    } catch (_e) {}
+  };
+}
+
 export function speakText(text, lang = "id-ID") {
-  if (!text || typeof window === "undefined") return false;
+  if (!text || typeof window === "undefined") {
+    if (typeof window !== "undefined" && window.signbridgeDebug) {
+      window.signbridgeDebug.lastTTS = { text: "", status: "skipped_empty_text", timestamp: Date.now() };
+    }
+    return false;
+  }
   playRecognitionChime();
 
-  if (!("speechSynthesis" in window)) return false;
+  if (!("speechSynthesis" in window)) {
+    if (window.signbridgeDebug) {
+      window.signbridgeDebug.lastTTS = { text, status: "speech_synthesis_unavailable", timestamp: Date.now() };
+    }
+    return false;
+  }
+
   try {
-    window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     const targetLang = lang === "fil" || lang === "ph" ? "fil-PH" : lang === "en" ? "en-US" : "id-ID";
     utter.lang = targetLang;
@@ -67,17 +87,68 @@ export function speakText(text, lang = "id-ID") {
     utter.pitch = 1.0;
     utter.volume = 1.0;
 
-    const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+    const voices = cachedVoices.length > 0 ? cachedVoices : (window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : []);
     const matchedVoice =
       voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(targetLang.slice(0, 2).toLowerCase())) ||
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("id")) ||
       voices[0];
     if (matchedVoice) {
       utter.voice = matchedVoice;
     }
 
-    window.speechSynthesis.speak(utter);
+    const ttsMeta = {
+      text,
+      lang: targetLang,
+      voice: matchedVoice ? matchedVoice.name : "default",
+      status: "queued",
+      timestamp: Date.now()
+    };
+
+    utter.onstart = () => {
+      ttsMeta.status = "speaking";
+      if (window.signbridgeDebug) window.signbridgeDebug.lastTTS = { ...ttsMeta };
+    };
+
+    utter.onend = () => {
+      ttsMeta.status = "finished";
+      if (window.signbridgeDebug) window.signbridgeDebug.lastTTS = { ...ttsMeta };
+    };
+
+    utter.onerror = (err) => {
+      ttsMeta.status = "error";
+      ttsMeta.error = err?.error || String(err);
+      if (window.signbridgeDebug) window.signbridgeDebug.lastTTS = { ...ttsMeta };
+      console.warn("[TTS] Utterance error:", err);
+    };
+
+    if (window.signbridgeDebug) {
+      window.signbridgeDebug.lastTTS = { ...ttsMeta };
+    }
+
+    // Hindari Chromium/Edge Bug: Pastikan state tidak ter-pause
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
+    // Hindari Chromium Bug 679437: Jika sedang aktif bicara, batalkan dan beri jeda 30ms
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+      setTimeout(() => {
+        try {
+          if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+          window.speechSynthesis.speak(utter);
+        } catch (e) {
+          console.warn("[TTS] Speak failed after cancel:", e);
+        }
+      }, 30);
+    } else {
+      window.speechSynthesis.speak(utter);
+    }
     return true;
-  } catch (_e) {
+  } catch (err) {
+    if (window.signbridgeDebug) {
+      window.signbridgeDebug.lastTTS = { text, status: "exception", error: String(err), timestamp: Date.now() };
+    }
     return false;
   }
 }

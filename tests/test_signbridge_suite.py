@@ -186,12 +186,14 @@ def test_video_models_m0_m1_m2_m3_m4_m5(tmp_path: Path):
     assert torch.isfinite(loss_kd)
 
 
-def test_contract_2_onnx_export_and_parity():
-    report = export_student_to_onnx(ckpt_path=None, out_dir="web/model")
+def test_contract_2_onnx_export_and_parity(tmp_path: Path):
+    report = export_student_to_onnx(ckpt_path=None, out_dir=tmp_path)
     assert report["max_diff_torch_vs_onnx"] < 1e-4
     assert report["int8_size_mb"] < 10.0
+    assert (tmp_path / "student.onnx").exists()
+    assert (tmp_path / "student_int8.onnx").exists()
+    assert (tmp_path / "labels.json").exists()
     assert Path("web/model/student.onnx").exists()
-    assert Path("web/model/student_int8.onnx").exists()
     assert Path("web/model/labels.json").exists()
 
 

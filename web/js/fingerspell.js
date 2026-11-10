@@ -186,7 +186,7 @@ export class FingerspellRecognizer {
     }
 
     if (bestCount < 7) return null;
-    if (bestLetter === this.lockedLetter || now - this.lastEmitAt < 1300) {
+    if (bestLetter === this.lockedLetter || (this.lastEmitAt > 0 && now - this.lastEmitAt < 1300)) {
       return null;
     }
 

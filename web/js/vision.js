@@ -56,7 +56,7 @@ export const SKELETON_EDGES_86 = [
 
 const FINGERTIP_INDICES = new Set([13, 17, 21, 25, 29, 34, 38, 42, 46, 50]);
 
-function drawGroupBoundingBox(ctx, points, label, color, pad = 12) {
+function drawGroupBoundingBox(ctx, points, label, color, pad = 12, isFlipped = false) {
   if (!points || points.length < 3) return;
   let minX = Infinity;
   let minY = Infinity;
@@ -104,13 +104,28 @@ function drawGroupBoundingBox(ctx, points, label, color, pad = 12) {
   ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
   ctx.fillRect(bx, by - 16, textW, 15);
   ctx.fillStyle = color;
-  ctx.fillText(label, bx + 5, by - 5);
+
+  if (isFlipped) {
+    ctx.save();
+    ctx.translate(bx + textW / 2, by - 8);
+    ctx.scale(-1, 1);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  } else {
+    ctx.fillText(label, bx + 5, by - 5);
+  }
   ctx.restore();
 }
 
-export function drawSkeleton86(ctx, kp86, width, height, { mirror = false, hudText = "" } = {}) {
+export function drawSkeleton86(ctx, kp86, width, height, { mirror = false, hudText = "", isMirroredCanvas = undefined } = {}) {
   if (!ctx || !kp86) return;
   ctx.clearRect(0, 0, width, height);
+
+  const isFlipped = isMirroredCanvas !== undefined
+    ? isMirroredCanvas
+    : Boolean(ctx.canvas && (ctx.canvas.id === "camera-canvas" || ctx.canvas.closest?.(".camera-viewport-wrap")));
 
   const toXY = (pt) => {
     if (!pt || !Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) return null;
@@ -252,9 +267,9 @@ export function drawSkeleton86(ctx, kp86, width, height, { mirror = false, hudTe
     }
   }
 
-  drawGroupBoundingBox(ctx, facePts, "WAJAH [35 NODE]", "#c4b5fd", 10);
-  drawGroupBoundingBox(ctx, leftHandPts, "TANGAN KIRI [21 NODE]", "#34d399", 14);
-  drawGroupBoundingBox(ctx, rightHandPts, "TANGAN KANAN [21 NODE]", "#fbbf24", 14);
+  drawGroupBoundingBox(ctx, facePts, "WAJAH [35 NODE]", "#c4b5fd", 10, isFlipped);
+  drawGroupBoundingBox(ctx, leftHandPts, "TANGAN KIRI [21 NODE]", "#34d399", 14, isFlipped);
+  drawGroupBoundingBox(ctx, rightHandPts, "TANGAN KANAN [21 NODE]", "#fbbf24", 14, isFlipped);
 
   const hasHand = leftHandPts.length > 0 || rightHandPts.length > 0;
   const defaultHud = hasHand
@@ -266,7 +281,18 @@ export function drawSkeleton86(ctx, kp86, width, height, { mirror = false, hudTe
   ctx.fillRect(8, height - 32, width - 16, 24);
   ctx.font = "bold 11px Inter, system-ui, sans-serif";
   ctx.fillStyle = hasHand ? "#34d399" : "#fbbf24";
-  ctx.fillText(hudText || defaultHud, 14, height - 16);
+  const text = hudText || defaultHud;
+  if (isFlipped) {
+    ctx.save();
+    ctx.translate(width / 2, height - 20);
+    ctx.scale(-1, 1);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  } else {
+    ctx.fillText(text, 14, height - 16);
+  }
   ctx.restore();
 }
 
