@@ -1,0 +1,25 @@
+# requirements-runtime.txt — Dependencies minimal untuk jalankan server web SignBridge
+# Tidak termasuk PyTorch (hanya diperlukan untuk training, bukan inference)
+
+# ── Web Framework & API ─────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+starlette==0.37.2
+
+# ── ONNX Runtime (untuk inferensi model) ────────────────────────────────────────
+onnxruntime>=1.24.0
+
+# ── Data Processing ─────────────────────────────────────────────────────────────
+numpy==1.26.4
+pandas==2.2.2
+
+# ── Configuration & Serialization ───────────────────────────────────────────────
+pyyaml==6.0.1
+
+# ── Database (SQLAlchemy + psycopg2) ────────────────────────────────────────────
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────────
+requests==2.32.3
