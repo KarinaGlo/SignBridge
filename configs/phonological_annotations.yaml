@@ -1,0 +1,243 @@
+# phonological_annotations.yaml
+# Anotasi fonologis untuk 32 gloss WL-BISINDO
+# Digunakan oleh Fonologis_Head (multitask auxiliary learning)
+# Referensi: design.md § FonologisAnnotation, Requirement 11.2
+#
+# Skema per gloss:
+#   handshape  : label bentuk tangan (dari set handshape yang dikonfigurasi)
+#   lokasi     : area tubuh tempat tanda dilakukan
+#   arah_gerak : arah dominan gerakan tangan
+#
+# Set label yang valid:
+#   handshape  (20 kelas): B-flat, B-open, C-shape, O-shape, F-shape,
+#                          V-shape, G-shape, H-shape, L-shape, A-shape,
+#                          S-fist, D-shape, W-shape, Y-shape, 5-open,
+#                          X-hook, R-cross, ILY, N-shape, K-shape
+#   lokasi     (10 kelas): neutral-space, mouth, chin, forehead, chest,
+#                          shoulder, temple, neck, cheek, abdomen
+#   arah_gerak  (8 kelas): towards-body, away-from-body, upward, downward,
+#                          lateral-left, lateral-right, circular, stationary
+
+metadata:
+  num_glosses: 32
+  num_handshape_classes: 20
+  num_lokasi_classes: 10
+  num_arah_gerak_classes: 8
+  dataset: "WL-BISINDO"
+  version: "1.0"
+
+glosses:
+
+  # --- Aktivitas Sehari-hari ---
+  MAKAN:
+    handshape: "B-flat"
+    lokasi: "mouth"
+    arah_gerak: "towards-body"
+
+  MINUM:
+    handshape: "C-shape"
+    lokasi: "mouth"
+    arah_gerak: "towards-body"
+
+  TIDUR:
+    handshape: "B-flat"
+    lokasi: "cheek"
+    arah_gerak: "stationary"
+
+  BERJALAN:
+    handshape: "V-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "downward"
+
+  BERLARI:
+    handshape: "A-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "away-from-body"
+
+  DUDUK:
+    handshape: "H-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "downward"
+
+  BERDIRI:
+    handshape: "V-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "upward"
+
+  MEMBACA:
+    handshape: "B-flat"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-left"
+
+  MENULIS:
+    handshape: "G-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-right"
+
+  BELAJAR:
+    handshape: "5-open"
+    lokasi: "forehead"
+    arah_gerak: "towards-body"
+
+  # --- Orang dan Hubungan Sosial ---
+  AKU:
+    handshape: "D-shape"
+    lokasi: "chest"
+    arah_gerak: "towards-body"
+
+  KAMU:
+    handshape: "D-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "away-from-body"
+
+  DIA:
+    handshape: "D-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-right"
+
+  IBU:
+    handshape: "5-open"
+    lokasi: "chin"
+    arah_gerak: "downward"
+
+  BAPAK:
+    handshape: "5-open"
+    lokasi: "forehead"
+    arah_gerak: "downward"
+
+  TEMAN:
+    handshape: "ILY"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-right"
+
+  # --- Kata Tanya dan Umum ---
+  APA:
+    handshape: "5-open"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-left"
+
+  SIAPA:
+    handshape: "L-shape"
+    lokasi: "chin"
+    arah_gerak: "circular"
+
+  DI_MANA:
+    handshape: "D-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-left"
+
+  KAPAN:
+    handshape: "X-hook"
+    lokasi: "neutral-space"
+    arah_gerak: "circular"
+
+  BAGAIMANA:
+    handshape: "B-open"
+    lokasi: "neutral-space"
+    arah_gerak: "upward"
+
+  BERAPA:
+    handshape: "5-open"
+    lokasi: "neutral-space"
+    arah_gerak: "downward"
+
+  # --- Emosi dan Kondisi ---
+  SENANG:
+    handshape: "B-flat"
+    lokasi: "chest"
+    arah_gerak: "circular"
+
+  SEDIH:
+    handshape: "5-open"
+    lokasi: "cheek"
+    arah_gerak: "downward"
+
+  SAKIT:
+    handshape: "D-shape"
+    lokasi: "chest"
+    arah_gerak: "towards-body"
+
+  SEHAT:
+    handshape: "S-fist"
+    lokasi: "chest"
+    arah_gerak: "away-from-body"
+
+  # --- Tempat dan Objek ---
+  RUMAH:
+    handshape: "B-flat"
+    lokasi: "neutral-space"
+    arah_gerak: "upward"
+
+  SEKOLAH:
+    handshape: "W-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "stationary"
+
+  MASJID:
+    handshape: "5-open"
+    lokasi: "forehead"
+    arah_gerak: "upward"
+
+  MOBIL:
+    handshape: "S-fist"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-right"
+
+  # --- Konsep Dasar ---
+  YA:
+    handshape: "A-shape"
+    lokasi: "neutral-space"
+    arah_gerak: "downward"
+
+  TIDAK:
+    handshape: "B-flat"
+    lokasi: "neutral-space"
+    arah_gerak: "lateral-left"
+
+# -----------------------------------------------------------------------
+# Peta indeks numerik untuk kelas label (digunakan oleh Fonologis_Head)
+# -----------------------------------------------------------------------
+label_indices:
+  handshape:
+    B-flat: 0
+    B-open: 1
+    C-shape: 2
+    O-shape: 3
+    F-shape: 4
+    V-shape: 5
+    G-shape: 6
+    H-shape: 7
+    L-shape: 8
+    A-shape: 9
+    S-fist: 10
+    D-shape: 11
+    W-shape: 12
+    Y-shape: 13
+    5-open: 14
+    X-hook: 15
+    R-cross: 16
+    ILY: 17
+    N-shape: 18
+    K-shape: 19
+
+  lokasi:
+    neutral-space: 0
+    mouth: 1
+    chin: 2
+    forehead: 3
+    chest: 4
+    shoulder: 5
+    temple: 6
+    neck: 7
+    cheek: 8
+    abdomen: 9
+
+  arah_gerak:
+    towards-body: 0
+    away-from-body: 1
+    upward: 2
+    downward: 3
+    lateral-left: 4
+    lateral-right: 5
+    circular: 6
+    stationary: 7

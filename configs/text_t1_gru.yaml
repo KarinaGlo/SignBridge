@@ -1,0 +1,14 @@
+# configs/text_t1_gru.yaml — T1: Seq2Seq BiGRU + Bahdanau Attention dari Nol
+experiment_id: "T1_seq2seq_gru_attention"
+seed: 42
+model_type: "gru"
+embed_dim: 128
+hidden_dim: 256
+epochs: 20
+batch_size: 16
+lr: 0.001
+train_tsv: "data/text/train.tsv"
+val_tsv: "data/text/val.tsv"
+test_tsv: "data/text/test_manual.tsv"
+output_dir: "runs/text_t1_gru"
+

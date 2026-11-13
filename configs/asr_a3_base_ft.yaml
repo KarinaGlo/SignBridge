@@ -1,0 +1,12 @@
+# configs/asr_a3_base_ft.yaml — A3: Whisper-base Fine-tuned Korpus Suara Kelas Indonesia
+experiment_id: "A3_whisper_base_ft_id"
+seed: 42
+model_name: "openai/whisper-base"
+language: "id"
+finetune: true
+epochs: 5
+batch_size: 8
+lr: 0.00001
+dataset_csv: "data/audio/metadata.csv"
+output_dir: "runs/asr_a3_base_ft"
+

@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: signbridge-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-signbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signbridge_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-signbridge_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-signbridge} -d $${POSTGRES_DB:-signbridge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  signbridge:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: signbridge-asean
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7860:7860"
+      - "8080:7860"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://signbridge:signbridge_dev@postgres:5432/signbridge_db}
+      - SIGNBRIDGE_FALLBACK_DB_URL=sqlite:///./data/signbridge_operational.db
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignBridge — Jembatan Komunikasi Real-Time Multimodal BISINDO &amp; FSL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230d9488' stroke-width='2.5'><path d='M7 16l-4-4 4-4'/><path d='M17 8l4 4-4 4'/><path d='M14 4l-4 16'/></svg>" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./css/style.css" />
+  <!-- MediaPipe Holistic & ONNX Runtime Web -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js" defer></script>
+</head>
+<body>
+  <div id="app-root">
+
+    <!-- ====================================================================
+         VIEW 1: LANDING PAGE (SaaS HERO, FITUR, PREVIEW, FAQ, FOOTER)
+         ==================================================================== -->
+    <div id="view-landing" class="page-view active">
+      <!-- Navbar Landing Page -->
+      <header class="app-topbar" style="background:#ffffff; border-bottom:1px solid var(--border-light); padding:1rem 2rem;">
+        <div class="topbar-left">
+          <div class="brand-row" style="margin:0;">
+            <div class="brand-icon-box">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16l-4-4 4-4"/><path d="M17 8l4 4-4 4"/><path d="M14 4l-4 16"/></svg>
+            </div>
+            <span class="brand-title">SignBridge</span>
+          </div>
+          <nav style="display:flex; gap:1.5rem; margin-left:2rem;" class="desktop-only">
+            <a href="#fitur" style="font-size:0.9rem; font-weight:600; color:var(--text-secondary);">Fitur</a>
+            <a href="#cara-kerja" style="font-size:0.9rem; font-weight:600; color:var(--text-secondary);">Cara Kerja</a>
+            <a href="#ruang-kelas" style="font-size:0.9rem; font-weight:600; color:var(--text-secondary);">Ruang Kelas</a>
+            <a href="#aksesibilitas" style="font-size:0.9rem; font-weight:600; color:var(--text-secondary);">Aksesibilitas</a>
+            <a href="#faq" style="font-size:0.9rem; font-weight:600; color:var(--text-secondary);">FAQ</a>
+          </nav>
+        </div>
+        <div class="topbar-right">
+          <button id="btn-landing-login" type="button" class="btn btn-outline btn-sm">Masuk</button>
+          <button id="btn-landing-start" type="button" class="btn btn-primary btn-sm">Mulai SignBridge</button>
+        </div>
+      </header>
+
+      <!-- Hero Section Dark Navy -->
+      <section class="landing-hero">
+        <div class="hero-pill-badge">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#5eead4;"></span>
+          Jembatan Komunikasi Multimodal ASEAN (BISINDO &amp; FSL)
+        </div>
+        <h1 class="hero-headline">Mendobrak Hambatan Komunikasi, Menghubungkan Setiap Suara.</h1>
+        <p class="hero-subtitle">
+          Jembatan percakapan real-time dua arah antara penutur bahasa isyarat dan teman dengar melalui teknologi AI on-device, pengenalan 86-keypoint MediaPipe, sintesis teks langsung, dan ruang kelas interaktif.
+        </p>
+        <div class="hero-cta-group">
+          <button id="btn-hero-translate" type="button" class="btn btn-primary btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+            Mulai Percakapan
+          </button>
+          <button id="btn-hero-classroom" type="button" class="btn btn-outline btn-lg" style="color:#ffffff; border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.08);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3z"/><path d="m2 7 10 5 10-5"/><path d="M12 12v9"/></svg>
+            Jelajahi Kelas Inklusif
+          </button>
+        </div>
+
+        <!-- Floating Live Translation App Preview Card -->
+        <div class="hero-app-preview-card">
+          <div class="preview-camera-col">
+            <div class="preview-top-badges">
+              <span class="overlay-pill camera-state">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Kamera Aktif
+              </span>
+              <span class="overlay-pill ai-recognizing">
+                <span class="pulse-dot"></span>
+                Mengenali Isyarat
+              </span>
+            </div>
+            <div class="preview-video-viewport">
+              <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=900&q=80" alt="Penutur Isyarat BISINDO" />
+              <div class="preview-caption-ribbon">
+                <div class="preview-caption-tag">Teks Bahasa Indonesia</div>
+                <div class="preview-caption-text">Saya ingin membahas materi diskusi kelas besok.</div>
+                <div class="caption-signer-badge">
+                  <span class="dot"></span> Ayu Putri · BISINDO Jakarta
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="preview-chat-col">
+            <div class="preview-chat-header">
+              <span>Percakapan Kelas</span>
+              <span class="state-pill live">Teks Langsung</span>
+            </div>
+            <div class="chat-bubble-stream">
+              <div class="chat-bubble">
+                <div class="chat-bubble-meta">
+                  <span class="chat-bubble-author">Dian Rahma · Guru</span>
+                  <span>10:30</span>
+                </div>
+                <div>Selamat pagi anak-anak, hari ini kita membahas topik air bersih.</div>
+              </div>
+              <div class="chat-bubble mine">
+                <div class="chat-bubble-meta">
+                  <span class="chat-bubble-author">Ayu Putri · Siswa</span>
+                  <span>10:31</span>
+                </div>
+                <div>Halo Ibu Dian! Saya siap berbagi ide tentang kebersihan sungai.</div>
+              </div>
+              <div class="chat-bubble">
+                <div class="chat-bubble-meta">
+                  <span class="chat-bubble-author">Raka Pratama · Siswa</span>
+                  <span>10:32</span>
+                </div>
+                <div>Keren sekali, Ayu! Bagaimana dengan daur ulang limbah plastik?</div>
+              </div>
+            </div>
+            <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid var(--border-subtle); font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.35rem;">
+              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--status-success);"></span>
+              Menunggu giliran berikutnya...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature Strip -->
+      <section id="fitur" class="features-strip">
+        <div class="features-strip-inner">
+          <div class="feature-pill-item">
+            <div class="feature-pill-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;">BISINDO &amp; FSL</div>
+              <div style="font-size:0.75rem; font-weight:500; color:var(--text-secondary);">32 Konsep &amp; 26 Abjad A-Z</div>
+            </div>
+          </div>
+          <div class="feature-pill-item">
+            <div class="feature-pill-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;">Suara ke Teks Cepat</div>
+              <div style="font-size:0.75rem; font-weight:500; color:var(--text-secondary);">Transkripsi instan ramah Tuli</div>
+            </div>
+          </div>
+          <div class="feature-pill-item">
+            <div class="feature-pill-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;">AI On-Device Edge</div>
+              <div style="font-size:0.75rem; font-weight:500; color:var(--text-secondary);">ONNX Web, aman tanpa cloud</div>
+            </div>
+          </div>
+          <div class="feature-pill-item">
+            <div class="feature-pill-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;">Aksesibilitas Total</div>
+              <div style="font-size:0.75rem; font-weight:500; color:var(--text-secondary);">Ukuran teks fleksibel &amp; kontras tinggi</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Pemahaman Dua Arah (Value Proposition) -->
+      <section class="landing-section">
+        <div class="section-tag">Pemahaman Komunikasi Dua Arah</div>
+        <h2 class="section-heading">Setiap Isyarat Terlihat. Setiap Ucapan Terdengar.</h2>
+        <p class="section-desc">
+          SignBridge menjembatani dua arah komunikasi secara setara antara penutur bahasa isyarat dan penutur kata lisan tanpa batasan.
+        </p>
+        <div class="dual-card-grid">
+          <div class="value-card">
+            <div class="value-card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/></svg>
+            </div>
+            <h3 class="value-card-title">Isyarat Anda, Diungkapkan dalam Kata</h3>
+            <p class="value-card-desc">
+              Kamera mendeteksi 86 titik landmark sendi tubuh dan tangan secara presisi, mengenali konsep kosakata isyarat, dan menyusunnya menjadi kalimat terucap via sintesis suara otomatis.
+            </p>
+            <div class="value-card-demo-box">
+              <span style="color:var(--teal-dark); font-weight:700;">Contoh:</span> Isyarat [TERIMA_KASIH] [GURU] &rarr; "Terima kasih banyak, Bapak/Ibu guru."
+            </div>
+          </div>
+          <div class="value-card">
+            <div class="value-card-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            </div>
+            <h3 class="value-card-title">Setiap Ucapan, Dibuat Nyata Terlihat</h3>
+            <p class="value-card-desc">
+              Ketika guru atau rekan dengar berbicara melalui mikrofon, suara seketika diubah menjadi teks langsung berukuran besar dan peraga kerangka isyarat animasi 3D L3 di layar.
+            </p>
+            <div class="value-card-demo-box">
+              <span style="color:var(--teal-dark); font-weight:700;">Contoh:</span> Ucapan "Mari kita mulai pelajaran" &rarr; Teks raksasa + Animasi isyarat kelas
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: 3 Langkah Alur Kerja -->
+      <section id="cara-kerja" style="background:var(--bg-page); padding:5rem 1.5rem; border-top:1px solid var(--border-light); border-bottom:1px solid var(--border-light);">
+        <div style="max-width:1140px; margin:0 auto;">
+          <div class="section-tag">Mudah Digunakan</div>
+          <h2 class="section-heading">Tiga Langkah Menuju Percakapan Bebas Hambatan</h2>
+          <div class="workflow-grid">
+            <div class="workflow-step-card">
+              <div class="workflow-step-num">LANGKAH 01</div>
+              <h4 class="workflow-step-title">Pilih Bahasa &amp; Mode</h4>
+              <p class="workflow-step-desc">
+                Tentukan bahasa sumber (BISINDO Indonesia atau FSL Filipina) dan mode yang sesuai: Terjemahan Langsung 1-on-1 atau Ruang Kelas bersama.
+              </p>
+            </div>
+            <div class="workflow-step-card">
+              <div class="workflow-step-num">LANGKAH 02</div>
+              <h4 class="workflow-step-title">Nyalakan Kamera atau Mikrofon</h4>
+              <p class="workflow-step-desc">
+                AI MediaPipe dan ONNX Runtime langsung aktif di browser Anda. Tidak memerlukan instalasi aplikasi tambahan atau perangkat keras khusus.
+              </p>
+            </div>
+            <div class="workflow-step-card">
+              <div class="workflow-step-num">LANGKAH 03</div>
+              <h4 class="workflow-step-title">Berkomunikasi Tanpa Batas</h4>
+              <p class="workflow-step-desc">
+                Mulai berisyarat atau berbicara. Nikmati terjemahan kalimat natural real-time, transkripsi teks langsung, dan interaksi multi-perangkat.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Ruang Kelas Inklusif Showcase (Dark Navy Banner) -->
+      <section id="ruang-kelas" style="padding:0 1.5rem;">
+        <div class="classroom-dark-showcase">
+          <div class="showcase-flex">
+            <div>
+              <div style="color:var(--teal-primary); font-weight:800; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem;">Ruang Kelas ASEAN Multibahasa</div>
+              <h2 style="font-size:clamp(1.8rem, 3.2vw, 2.6rem); font-weight:800; line-height:1.2; margin-bottom:1rem;">Perangkat Berbeda. Diskusi yang Sama.</h2>
+              <p style="color:#cbd5e1; line-height:1.6; margin-bottom:1.75rem; font-size:1.05rem;">
+                Hubungkan laptop guru, tablet siswa Tuli, dan ponsel siswa dengar dalam satu kode ruang kelas yang sama. Setiap peserta menerima preferensi bahasa dan format yang paling nyaman bagi mereka.
+              </p>
+              <ul style="list-style:none; display:flex; flex-direction:column; gap:0.75rem; margin-bottom:2rem;">
+                <li style="display:flex; align-items:center; gap:0.65rem;">
+                  <span style="color:var(--teal-primary); font-weight:800;">✓</span>
+                  <span>Sinkronisasi materi pelajaran dan slide interaktif real-time</span>
+                </li>
+                <li style="display:flex; align-items:center; gap:0.65rem;">
+                  <span style="color:var(--teal-primary); font-weight:800;">✓</span>
+                  <span>Fitur angkat tangan (Raise Hand) ramah penutur isyarat</span>
+                </li>
+                <li style="display:flex; align-items:center; gap:0.65rem;">
+                  <span style="color:var(--teal-primary); font-weight:800;">✓</span>
+                  <span>Transkrip riwayat percakapan otomatis dapat diunduh</span>
+                </li>
+              </ul>
+              <button id="btn-showcase-class" type="button" class="btn btn-primary btn-lg">Buka Ruang Kelas Sekarang</button>
+            </div>
+            <div style="border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-xl); border:1px solid rgba(255,255,255,0.15);">
+              <img src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80" alt="Ruang Kelas Inklusif" style="width:100%; height:100%; object-fit:cover; display:block;" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Aksesibilitas (Pilar Utama) -->
+      <section id="aksesibilitas" class="landing-section">
+        <div class="section-tag">Aksesibilitas Universal</div>
+        <h2 class="section-heading">Akses Bukan Sekadar Fitur Tambahan.</h2>
+        <p class="section-desc">
+          SignBridge dibangun dengan prinsip Accessibility-First demi memastikan pengalaman yang setara bagi komunitas Tuli dan Dengar.
+        </p>
+        <div class="dual-card-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="value-card">
+            <h4 style="font-size:1.15rem; font-weight:700; color:var(--navy-primary); margin-bottom:0.5rem;">Teks Langsung Ukuran Fleksibel</h4>
+            <p style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5;">
+              Pengguna dapat mengatur ukuran teks caption menjadi Normal, Besar, atau Ekstra Besar sesuai kenyamanan membaca.
+            </p>
+          </div>
+          <div class="value-card">
+            <h4 style="font-size:1.15rem; font-weight:700; color:var(--navy-primary); margin-bottom:0.5rem;">Peraga Kerangka 3D L3</h4>
+            <p style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5;">
+              Visualisasi kerangka sendi 86 titik membantu memahami artikulasi bentuk tangan, lokasi, dan gerakan secara anatomis.
+            </p>
+          </div>
+          <div class="value-card">
+            <h4 style="font-size:1.15rem; font-weight:700; color:var(--navy-primary); margin-bottom:0.5rem;">Privasi Terjaga di Perangkat</h4>
+            <p style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5;">
+              Video kamera Anda diproses langsung di peramban tanpa pernah diunggah ke server pihak ketiga demi menjaga privasi penuh.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: FAQ Accordion -->
+      <section id="faq" style="background:var(--bg-page); padding:5rem 1.5rem; border-top:1px solid var(--border-light);">
+        <div style="max-width:840px; margin:0 auto;">
+          <div class="section-tag">Tanya Jawab</div>
+          <h2 class="section-heading">Pertanyaan Bagus. Jawaban Jelas.</h2>
+          <div class="faq-list">
+            <div class="faq-item active">
+              <button type="button" class="faq-question">
+                <span>Bahasa apa saja yang didukung oleh SignBridge?</span>
+                <span class="faq-icon">▼</span>
+              </button>
+              <div class="faq-answer">
+                SignBridge mendukung Bahasa Isyarat Indonesia (BISINDO) dan Filipino Sign Language (FSL) untuk 32 konsep ruang kelas inti dan 26 huruf abjad ejaan jari (A–Z), serta penerjemahan suara dan teks ke dalam Bahasa Indonesia dan Filipino.
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-question">
+                <span>Apakah saya perlu memasang kamera atau alat khusus?</span>
+                <span class="faq-icon">▼</span>
+              </button>
+              <div class="faq-answer">
+                Tidak. Anda cukup menggunakan kamera web (webcam) standar pada laptop, tablet, atau smartphone Anda. Model AI MediaPipe Holistic melacak sendi tubuh secara otomatis langsung melalui browser.
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-question">
+                <span>Bagaimana cara menghubungkan ruang kelas multi-perangkat?</span>
+                <span class="faq-icon">▼</span>
+              </button>
+              <div class="faq-answer">
+                Guru membuat atau membagikan kode ruang kelas (misal: <code>BRIDGE-204</code>). Siswa cukup memasukkan kode tersebut untuk langsung tersambung ke ruang kelas interaktif yang sama.
+              </div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-question">
+                <span>Apakah data video kamera saya disimpan di server?</span>
+                <span class="faq-icon">▼</span>
+              </button>
+              <div class="faq-answer">
+                Tidak. Ekstraksi koordinat landmark dilakukan 100% lokal di browser pengguna menggunakan WebAssembly dan ONNX Runtime Web. Aliran video tidak pernah dikirimkan ke cloud.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Banner CTA Bawah -->
+      <section style="padding:4rem 1.5rem; background:#ffffff;">
+        <div style="max-width:1100px; margin:0 auto; background:linear-gradient(135deg, var(--navy-dark), var(--navy-primary)); border-radius:var(--radius-xl); padding:3.5rem 2.5rem; color:#ffffff; text-align:center; box-shadow:var(--shadow-xl); border:1px solid var(--teal-border);">
+          <h2 style="font-size:clamp(1.8rem, 3.2vw, 2.5rem); font-weight:800; margin-bottom:1rem;">Percakapan yang Lebih Baik Dimulai dari Koneksi.</h2>
+          <p style="color:#cbd5e1; max-width:600px; margin:0 auto 2rem; font-size:1.05rem;">
+            Bergabunglah dengan pengalaman komunikasi inklusif masa depan. Mulai gunakan SignBridge sekarang tanpa biaya.
+          </p>
+          <button id="btn-bottom-start" type="button" class="btn btn-primary btn-lg">Mulai Menggunakan SignBridge</button>
+        </div>
+      </section>
+
+      <!-- Footer 4 Kolom -->
+      <footer class="landing-footer">
+        <div class="footer-inner">
+          <div>
+            <div class="brand-row" style="margin-bottom:1rem;">
+              <div class="brand-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16l-4-4 4-4"/><path d="M17 8l4 4-4 4"/><path d="M14 4l-4 16"/></svg>
+              </div>
+              <span class="brand-title" style="color:#ffffff;">SignBridge</span>
+            </div>
+            <p style="line-height:1.6; max-width:280px; font-size:0.85rem;">
+              Jembatan komunikasi inklusif multimodal bahasa isyarat ASEAN (BISINDO &amp; FSL) yang menghubungkan penutur Tuli dan Dengar.
+            </p>
+          </div>
+          <div>
+            <h5 class="footer-col-title">Produk</h5>
+            <ul class="footer-link-list">
+              <li><a href="#" class="nav-to-app" data-target="panel-translate">Terjemahan Langsung</a></li>
+              <li><a href="#" class="nav-to-app" data-target="panel-classroom">Ruang Kelas Inklusif</a></li>
+              <li><a href="#" class="nav-to-app" data-target="panel-guide">Kamus &amp; Fonologi</a></li>
+              <li><a href="#" class="nav-to-app" data-target="panel-practice">Latihan Mandiri</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5 class="footer-col-title">Teknologi</h5>
+            <ul class="footer-link-list">
+              <li><a href="#">MediaPipe Holistic</a></li>
+              <li><a href="#">ONNX Runtime Web</a></li>
+              <li><a href="#">Arsitektur 86 Keypoints</a></li>
+              <li><a href="#">Sinkronisasi WebRTC &amp; WS</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5 class="footer-col-title">Dukungan</h5>
+            <ul class="footer-link-list">
+              <li><a href="#" class="nav-to-app" data-target="panel-settings">Panduan Aksesibilitas</a></li>
+              <li><a href="#faq">Pusat Bantuan &amp; FAQ</a></li>
+              <li><a href="#">Kebijakan Privasi</a></li>
+              <li><a href="#">Ketentuan Layanan</a></li>
+            </ul>
+          </div>
+        </div>
+        <div style="max-width:1140px; margin:2rem auto 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; font-size:0.8rem;">
+          <div>&copy; 2026 SignBridge ASEAN. Seluruh hak cipta dilindungi.</div>
+          <div>Dikembangkan untuk Aksesibilitas Komunitas Tuli &amp; Dengar.</div>
+        </div>
+      </footer>
+    </div>
+
+
+    <!-- ====================================================================
+         VIEW 2: APP SHELL (SIDEBAR DASHBOARD, TOPBAR, MULTI-PANEL)
+         ==================================================================== -->
+    <div id="view-app" class="page-view">
+      <div class="app-shell">
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+        <!-- Sidebar Kiri SaaS -->
+        <aside id="app-sidebar" class="app-sidebar">
+          <div class="sidebar-header">
+            <div id="sidebar-brand-click" class="brand-row">
+              <div class="brand-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16l-4-4 4-4"/><path d="M17 8l4 4-4 4"/><path d="M14 4l-4 16"/></svg>
+              </div>
+              <span class="brand-title">SignBridge</span>
+            </div>
+            <div class="workspace-selector" id="workspace-dropdown-trigger">
+              <span>Ruang Kerja Pribadi</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <!-- Navigasi Menu Sidebar -->
+          <nav class="sidebar-nav">
+            <div class="nav-section-title">RUANG KERJA</div>
+            <div class="nav-item active" data-app-tab="panel-translate">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+              <span>Terjemahkan</span>
+            </div>
+            <div class="nav-item" data-app-tab="panel-classroom">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3z"/><path d="m2 7 10 5 10-5"/><path d="M12 12v9"/></svg>
+              <span>Ruang Kelas</span>
+              <span class="nav-badge">Live</span>
+            </div>
+            <div class="nav-item" data-app-tab="panel-sessions">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Riwayat Sesi</span>
+            </div>
+            <div class="nav-item" data-app-tab="panel-guide">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>Panduan Bahasa</span>
+            </div>
+            <div class="nav-item" data-app-tab="panel-practice">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+              <span>Latihan Mandiri</span>
+            </div>
+            <div class="nav-item" data-app-tab="panel-recorder">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              <span>Perekam Dataset</span>
+            </div>
+          </nav>
+
+          <!-- Promo Card Aksesibilitas di Bawah Sidebar -->
+          <div class="sidebar-footer">
+            <div class="accessibility-promo-card">
+              <div class="promo-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                Inklusivitas Penuh
+              </div>
+              <div class="promo-title">Percakapan Anda, cara Anda.</div>
+              <div class="promo-desc">Pilih teks langsung, gerakan isyarat, atau ucapan audio untuk berpartisipasi setara.</div>
+            </div>
+
+            <div class="sidebar-settings-btn" data-app-tab="panel-settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              <span>Pengaturan &amp; Aksesibilitas</span>
+            </div>
+            <div class="version-pill">SignBridge ID-PH / Pratinjau v1.0</div>
+          </div>
+        </aside>
+
+        <!-- Area Konten Utama Dashboard -->
+        <main class="app-main">
+          <!-- Topbar Header Dashboard -->
+          <header class="app-topbar">
+            <div class="topbar-left">
+              <button id="btn-mobile-menu" type="button" class="mobile-menu-toggle" aria-label="Buka Menu Sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
+              <div class="topbar-breadcrumb">
+                <span>SignBridge</span>
+                <span>/</span>
+                <span id="breadcrumb-current-view" class="current">Terjemahkan</span>
+              </div>
+            </div>
+            <div class="topbar-right">
+              <div id="engine-status-pill" class="engine-pill">
+                <span class="dot"></span>
+                <span id="engine-status-text">Memuat Model M0...</span>
+              </div>
+              <div class="topbar-room-badge" id="topbar-room-info">
+                <span>Ruang Demo</span>
+              </div>
+              <button id="btn-back-to-landing" type="button" class="btn btn-outline btn-sm" title="Kembali ke Beranda">
+                Beranda
+              </button>
+              <div class="avatar-badge" title="Profil Pengguna">DR</div>
+            </div>
+          </header>
+
+          <!-- Konten Panel-Panel Aplikasi -->
+          <div class="app-content-body" style="padding-bottom:3rem;">
+
+            <!-- ==============================================================
+                 PANEL 1: TERJEMAHAN LANGSUNG (LIVE TRANSLATION)
+                 ============================================================== -->
+            <section id="panel-translate" class="app-view-panel active">
+              <div class="live-translation-container">
+                <!-- Header Halaman -->
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Terjemahan Langsung</h1>
+                    <p>Percakapan bersama, sesuai cara dan format yang nyaman bagi Anda.</p>
+                  </div>
+                  <div class="live-page-actions">
+                    <span class="state-pill live" id="live-connection-badge">
+                      Terhubung · 06:24
+                    </span>
+                    <button id="btn-invite-participant" type="button" class="btn btn-outline btn-sm">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                      Undang Peserta
+                    </button>
+                    <button id="btn-end-session" type="button" class="btn btn-danger-outline btn-sm">
+                      Akhiri Sesi
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Bilah Pilihan Mode Penerjemahan -->
+                <div class="translation-mode-tabs">
+                  <button type="button" class="mode-tab-btn active" data-translate-mode="hybrid">Isyarat &rarr; Teks &amp; Suara</button>
+                  <button type="button" class="mode-tab-btn" data-translate-mode="speech">Suara &rarr; Teks Langsung</button>
+                  <button type="button" class="mode-tab-btn" data-translate-mode="bridge">Jembatan BISINDO &harr; FSL</button>
+                </div>
+
+                <!-- Bilah Pemilih Bahasa & Arah Jembatan -->
+                <div class="language-selector-strip">
+                  <div class="lang-select-group">
+                    <div class="lang-box">
+                      <label for="bridge-source-lang">Bahasa Masukan Isyarat</label>
+                      <select id="bridge-source-lang">
+                        <option value="ID">BISINDO · Indonesia</option>
+                        <option value="PH">FSL · Filipina</option>
+                      </select>
+                    </div>
+                    <div class="lang-arrow">&rarr;</div>
+                    <div class="lang-box">
+                      <label for="bridge-target-lang">Keluaran Teks &amp; Ucapan</label>
+                      <select id="bridge-target-lang">
+                        <option value="id-ID">Bahasa Indonesia · Teks + Suara</option>
+                        <option value="fil-PH">Filipino · Teks + Suara</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <label class="toggle-switch-group">
+                    <input id="chk-auto-speak" type="checkbox" checked />
+                    <span>Keluaran Suara Aktif (TTS)</span>
+                  </label>
+                </div>
+
+                <!-- Panggung Utama (2 Kolom) -->
+                <div class="translation-stage-grid">
+                  <!-- Kolom Kiri: Kamera & Pelacakan Isyarat -->
+                  <div class="camera-stage-col">
+                    <div class="camera-stage-card">
+                      <div class="camera-stage-header">
+                        <span>Kamera Anda</span>
+                        <span>Ayu Putri — Anda</span>
+                      </div>
+                      <div class="camera-viewport-wrap">
+                        <div id="debug-overlay-panel" class="debug-hud-overlay" style="display:none;"></div>
+                        <div class="viewport-overlay-badges">
+                          <span id="camera-state-pill" class="overlay-pill camera-state">Kamera Aktif</span>
+                          <span id="sign-state-badge" class="overlay-pill ai-recognizing">
+                            <span class="pulse-dot"></span>
+                            Mengenali Isyarat
+                          </span>
+                        </div>
+                        <video id="camera-video" playsinline muted></video>
+                        <canvas id="camera-canvas" width="640" height="480"></canvas>
+                        
+                        <!-- Subtitle Ribbon Dinamis di Bawah Video -->
+                        <div class="camera-caption-banner">
+                          <div class="caption-banner-label">Teks Bahasa Indonesia</div>
+                          <div id="natural-sentence-output" class="caption-banner-text">
+                            Menunggu deret isyarat...
+                          </div>
+                          <div class="caption-signer-badge">
+                            <span class="dot"></span>
+                            <span>Ayu Putri · BISINDO Jakarta</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Bilah Kontrol di Bawah Kamera -->
+                      <div class="camera-controls-bar">
+                        <div class="controls-left-group">
+                          <button id="btn-toggle-camera" type="button" class="btn btn-primary btn-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Kamera Aktif
+                          </button>
+                          <button id="btn-mic-listen" type="button" class="btn btn-outline btn-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            Mikrofon Aktif
+                          </button>
+                          <button id="btn-toggle-captions" type="button" class="btn btn-outline btn-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M7 15h3a2 2 0 0 0 2-2m-2-4H7a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2"/></svg>
+                            Teks Aktif
+                          </button>
+                        </div>
+                        <div class="controls-right-group">
+                          <button id="btn-fullscreen-camera" type="button" class="btn btn-outline btn-sm" title="Layar Penuh">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                          </button>
+                          <button id="btn-clear-glosses" type="button" class="btn btn-outline btn-sm" title="Bersihkan Kalimat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Kartu Peserta Dengar (Remote Listener) -->
+                    <div class="listener-info-card">
+                      <div class="listener-profile">
+                        <div class="listener-avatar">RP</div>
+                        <div class="listener-meta">
+                          <h4>Raka Pratama</h4>
+                          <p>Suara Bahasa Indonesia &rarr; Teks Langsung</p>
+                        </div>
+                      </div>
+                      <div class="listener-status-pill">
+                        <div class="sound-wave-box active">
+                          <span class="wave-bar"></span>
+                          <span class="wave-bar"></span>
+                          <span class="wave-bar"></span>
+                          <span class="wave-bar"></span>
+                        </div>
+                        <span>Mendengarkan</span>
+                      </div>
+                    </div>
+
+                    <!-- Tip Panduan Visual Kamera -->
+                    <div class="visual-tip-card">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      <div>
+                        <strong>Berikan ruang untuk gerakan isyarat Anda.</strong> Pastikan kedua tangan, pergelangan, dan wajah terlihat jelas dalam bingkai dengan pencahayaan yang cukup.
+                      </div>
+                    </div>
+
+                    <!-- Panel Tambahan: Top-3 Prediksi & Ejaan Jari (Accordion/Collapsible) -->
+                    <div class="card" style="margin-top:1rem; padding:1.25rem;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                        <span style="font-size:0.85rem; font-weight:700; color:var(--navy-primary);">Top-3 Prediksi Kosakata (BISINDO &amp; FSL):</span>
+                        <select id="recognition-mode" style="font-size:0.8rem; padding:0.25rem 0.5rem; border-radius:var(--radius-sm); border:1px solid var(--border-light);">
+                          <option value="hybrid">Mode Hibrida (32 Kata + 26 Abjad)</option>
+                          <option value="video">Mode Kata (32 Konsep)</option>
+                          <option value="fingerspell">Mode Abjad (26 Ejaan Jari)</option>
+                        </select>
+                      </div>
+                      <div id="top3-predictions" class="chip-row" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;"></div>
+
+                      <div style="font-size:0.85rem; font-weight:700; color:var(--navy-primary); margin-bottom:0.4rem;">Deret Gloss Terdeteksi:</div>
+                      <div id="gloss-sequence-chips" class="chip-row" style="display:flex; gap:0.4rem; flex-wrap:wrap; min-height:28px;">
+                        <span class="muted" style="font-size:0.82rem;">Belum ada isyarat terdeteksi.</span>
+                      </div>
+
+                      <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed var(--border-light);">
+                        <span style="font-size:0.82rem; font-weight:600;">Ejaan Jari (A-Z):</span>
+                        <strong id="spelled-word-output" style="letter-spacing:0.1em; color:var(--teal-dark); font-size:1rem;">-</strong>
+                        <button id="btn-commit-spelled" type="button" class="btn btn-primary btn-sm" style="margin-left:auto;">Masukkan Ejaan</button>
+                        <button id="btn-back-spelled" type="button" class="btn btn-outline btn-sm">Hapus</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Kolom Kanan: Panel Percakapan (Conversation) -->
+                  <div class="conversation-panel-col">
+                    <div class="conversation-panel-card">
+                      <div class="conversation-panel-header">
+                        <div class="conversation-header-title">Percakapan</div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                          <span class="state-pill live" style="font-size:0.75rem;">Teks Langsung</span>
+                          <button id="btn-adjust-caption-size" type="button" class="font-size-adjuster" title="Ubah Ukuran Teks">
+                            <span>Aa Ukuran Teks</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Aliran Pesan Percakapan -->
+                      <div id="conversation-messages-list" class="conversation-messages-list">
+                        <div class="chat-bubble">
+                          <div class="chat-bubble-meta">
+                            <span class="chat-bubble-author">Ayu · Anda</span>
+                            <span>10:32</span>
+                          </div>
+                          <div>Halo, saya Ayu. Senang bertemu denganmu di kelas.</div>
+                          <div style="font-size:0.72rem; color:var(--teal-dark); font-weight:600; margin-top:0.25rem;">BISINDO &rarr; Teks &amp; Suara Indonesia</div>
+                        </div>
+
+                        <div class="chat-bubble" style="background:#f0fdf4; border-color:#bbf7d0;">
+                          <div class="chat-bubble-meta">
+                            <span class="chat-bubble-author" style="color:#166534;">Raka</span>
+                            <span>10:32</span>
+                          </div>
+                          <div>Halo, Ayu! Apa yang ingin kita bahas hari ini?</div>
+                          <div style="font-size:0.72rem; color:#166534; font-weight:600; margin-top:0.25rem;">Suara Indonesia &rarr; Teks Langsung</div>
+                        </div>
+
+                        <div class="chat-bubble mine">
+                          <div class="chat-bubble-meta">
+                            <span class="chat-bubble-author">Ayu · Anda</span>
+                            <span>10:33</span>
+                          </div>
+                          <div>Saya ingin membahas kegiatan belajar besok tentang sungai bersih.</div>
+                          <div style="font-size:0.72rem; color:var(--teal-dark); font-weight:600; margin-top:0.25rem;">BISINDO &rarr; Teks &amp; Suara Indonesia</div>
+                        </div>
+                      </div>
+
+                      <!-- Indikator Status Giliran Bicara -->
+                      <div class="conversation-turn-status">
+                        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--teal-primary); animation:pulseDot 1.4s infinite ease-in-out;"></span>
+                        <span>Menunggu giliran berikutnya...</span>
+                      </div>
+
+                      <!-- Kotak Pengirim Pesan -->
+                      <div class="conversation-composer-box">
+                        <input id="hearing-text-input" type="text" class="conversation-input" placeholder="Ketik pesan atau ucapan Anda..." />
+                        <button id="btn-send-hearing" type="button" class="btn btn-primary btn-sm">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 2: RUANG KELAS INKLUSIF (INCLUSIVE CLASSROOM)
+                 ============================================================== -->
+            <section id="panel-classroom" class="app-view-panel">
+              <div class="classroom-page-container">
+                <!-- Header Ruang Kelas -->
+                <div class="classroom-header-bar">
+                  <div class="class-title-block">
+                    <h1>
+                      Ruang Kelas Inklusif
+                      <span class="state-pill live">Live</span>
+                    </h1>
+                    <p>Belajar tanpa batas · Studi Lingkungan Hidup</p>
+                  </div>
+                  <div class="live-page-actions">
+                    <button id="btn-classroom-invite" type="button" class="btn btn-outline btn-sm">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                      Undang Perangkat
+                    </button>
+                    <button id="btn-classroom-end" type="button" class="btn btn-danger-outline btn-sm">
+                      Akhiri Kelas
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Bilah Kode Ruang Kelas -->
+                <div class="class-code-strip">
+                  <div class="code-badge-group">
+                    <span style="font-size:0.85rem; color:var(--text-secondary);">Kode Kelas:</span>
+                    <button id="btn-copy-class-code" type="button" class="code-badge-pill" title="Salin Kode Kelas">
+                      <span>BRIDGE-204</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                    <span class="code-info-meta">BISINDO + FSL · Preferensi teks perorangan</span>
+                  </div>
+                  <div class="connected-devices-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    <span>4 Perangkat Terhubung</span>
+                  </div>
+                </div>
+
+                <!-- Tabs Konten Ruang Kelas -->
+                <div class="translation-mode-tabs" style="margin-bottom:1.5rem;">
+                  <button type="button" class="mode-tab-btn active">Materi Bersama</button>
+                  <button type="button" class="mode-tab-btn">Diskusi Kelas</button>
+                  <button type="button" class="mode-tab-btn">Transkrip Sesi</button>
+                  <span style="margin-left:auto; font-size:0.85rem; font-weight:700; color:var(--text-secondary);">Pelajaran 02 / 06</span>
+                </div>
+
+                <!-- Layout Ruang Kelas (2 Kolom) -->
+                <div class="classroom-main-grid">
+                  <!-- Kolom Kiri: Slide Materi Bersama & Caption Raksasa -->
+                  <div class="classroom-left-col">
+                    <div class="shared-lesson-card">
+                      <div class="lesson-meta-topic">STUDI LINGKUNGAN / DISKUSI KELOMPOK</div>
+                      <h2 class="lesson-headline">Air bersih dimulai dari komunitas kita.</h2>
+                      <p class="lesson-prompt">
+                        Apa yang bisa kita lakukan bersama untuk menjaga sungai sekitar tetap bersih? Bagikan satu ide Anda kepada seluruh kelas.
+                      </p>
+
+                      <div class="lesson-visual-banner">
+                        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80" alt="Sungai Bersih" />
+                      </div>
+
+                      <!-- 3 Kartu Langkah Diskusi -->
+                      <div class="discussion-cards-row">
+                        <div class="disc-card">
+                          <div class="disc-step-num">01</div>
+                          <div class="disc-step-title">Perhatikan</div>
+                          <div class="disc-step-desc">Apa yang Anda amati di sekitar sungai kita?</div>
+                        </div>
+                        <div class="disc-card">
+                          <div class="disc-step-num">02</div>
+                          <div class="disc-step-title">Pikirkan</div>
+                          <div class="disc-step-desc">Bagaimana kebiasaan kita memengaruhi air?</div>
+                        </div>
+                        <div class="disc-card">
+                          <div class="disc-step-num">03</div>
+                          <div class="disc-step-title">Bagikan</div>
+                          <div class="disc-step-desc">Sampaikan satu langkah nyata yang bisa kita lakukan.</div>
+                        </div>
+                      </div>
+
+                      <div style="font-size:0.8rem; color:var(--text-secondary); display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding-top:0.75rem;">
+                        <span>Dian Rahma — Guru sedang berbagi materi</span>
+                        <span>Konten bersama: Bahasa Indonesia</span>
+                      </div>
+                    </div>
+
+                    <!-- Kotak Caption Suara Guru / Teman Dengar -->
+                    <div style="background:var(--navy-dark); color:#ffffff; border-radius:var(--radius-lg); padding:1.25rem 1.5rem; margin-top:1.25rem; box-shadow:var(--shadow-md);">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                        <span style="font-size:0.72rem; font-weight:800; color:var(--teal-primary); letter-spacing:0.08em; text-transform:uppercase;">
+                          DIAN · SUARA INDONESIA &rarr; TEKS
+                        </span>
+                        <span style="font-size:0.8rem; color:#94a3b8;">Aa Ukuran Teks</span>
+                      </div>
+                      <div id="giant-caption" style="font-size:1.45rem; font-weight:700; line-height:1.35; margin-bottom:0.4rem;">
+                        Apa yang bisa kita lakukan untuk menjaga sungai tetap bersih?
+                      </div>
+                      <div style="font-size:0.75rem; color:#94a3b8;">
+                        Teks Anda: Bahasa Indonesia · Setiap peserta dapat memilih bahasa teks masing-masing.
+                      </div>
+                    </div>
+
+                    <!-- Notifikasi Permintaan Berbicara / Angkat Tangan -->
+                    <div class="raise-hand-notification-banner">
+                      <div class="raise-hand-text">
+                        <div class="raise-hand-icon">✋</div>
+                        <div>
+                          <strong>Ayu Putri ingin berkontribusi</strong>
+                          <div style="font-size:0.78rem; color:var(--text-secondary);">Isyarat BISINDO · Siap berbagi ide dengan kelas</div>
+                        </div>
+                      </div>
+                      <button id="btn-give-floor" type="button" class="btn btn-primary btn-sm">Berikan Kesempatan</button>
+                    </div>
+
+                    <!-- Bilah Kontrol Pengajar / Siswa -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1.25rem; background:var(--surface-card); padding:0.85rem 1.25rem; border-radius:var(--radius-md); border:1px solid var(--border-light); flex-wrap:wrap; gap:0.5rem;">
+                      <div style="display:flex; gap:0.5rem;">
+                        <button type="button" class="btn btn-primary btn-sm">Kamera Aktif</button>
+                        <button type="button" class="btn btn-outline btn-sm">Mikrofon Aktif</button>
+                        <button type="button" class="btn btn-outline btn-sm">Teks Aktif</button>
+                      </div>
+                      <button type="button" class="btn btn-navy btn-sm">Berhenti Berbagi</button>
+                    </div>
+                  </div>
+
+                  <!-- Kolom Kanan: Orang & Perangkat + Obrolan Kelas -->
+                  <div class="classroom-right-col">
+                    <!-- Kartu Orang & Perangkat -->
+                    <div class="people-devices-card">
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="font-size:0.95rem; font-weight:700; color:var(--navy-primary);">Orang &amp; Perangkat</h4>
+                        <span class="state-pill live" style="font-size:0.72rem;">4 Online</span>
+                      </div>
+                      <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.2rem;">Satu sesi bersama. Preferensi akses mandiri.</p>
+
+                      <div class="participant-list">
+                        <div class="participant-item">
+                          <div class="participant-info">
+                            <div class="participant-avatar-sm" style="background:#e0f2fe; color:#0369a1;">DR</div>
+                            <div class="participant-name-role">
+                              <h5>Dian Rahma · Guru (Anda)</h5>
+                              <p>Suara Indonesia · Berbagi materi</p>
+                            </div>
+                          </div>
+                          <span class="participant-device-status">📶</span>
+                        </div>
+
+                        <div class="participant-item">
+                          <div class="participant-info">
+                            <div class="participant-avatar-sm" style="background:var(--teal-light); color:var(--teal-dark);">AP</div>
+                            <div class="participant-name-role">
+                              <h5>Ayu Putri</h5>
+                              <p>BISINDO · Teks Indonesia</p>
+                            </div>
+                          </div>
+                          <span style="font-size:0.9rem;" title="Angkat Tangan">✋</span>
+                        </div>
+
+                        <div class="participant-item">
+                          <div class="participant-info">
+                            <div class="participant-avatar-sm">MS</div>
+                            <div class="participant-name-role">
+                              <h5>Miguel Santos</h5>
+                              <p>FSL · Teks Filipino</p>
+                            </div>
+                          </div>
+                          <span class="participant-device-status">📶</span>
+                        </div>
+
+                        <div class="participant-item">
+                          <div class="participant-info">
+                            <div class="participant-avatar-sm">RP</div>
+                            <div class="participant-name-role">
+                              <h5>Raka Pratama</h5>
+                              <p>Teks Indonesia · Audio aktif</p>
+                            </div>
+                          </div>
+                          <span class="participant-device-status">📶</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Kartu Diskusi Kelas -->
+                    <div class="class-discussion-card">
+                      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem;">
+                        <h4 style="font-size:0.95rem; font-weight:700; color:var(--navy-primary);">Diskusi Kelas</h4>
+                        <span style="font-size:0.75rem; color:var(--text-secondary);">Aktif</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:0.65rem; max-height:260px; overflow-y:auto; font-size:0.82rem; margin-bottom:0.85rem;">
+                        <div class="chat-bubble">
+                          <div class="chat-bubble-meta">
+                            <span class="chat-bubble-author">Miguel (Filipina)</span>
+                            <span>11:08</span>
+                          </div>
+                          <div>Maaari tayong maglinis ng ilog nang sama-sama. (Kita bisa membersihkan sungai bersama).</div>
+                        </div>
+                        <div class="chat-bubble mine">
+                          <div class="chat-bubble-meta">
+                            <span class="chat-bubble-author">Dian Rahma · Guru</span>
+                            <span>11:09</span>
+                          </div>
+                          <div>Terima kasih, Miguel. Ayu, apa idemu dari perspektif BISINDO?</div>
+                        </div>
+                      </div>
+                      <div style="display:flex; gap:0.4rem;">
+                        <input type="text" class="conversation-input" placeholder="Kirim pesan ke kelas..." style="font-size:0.82rem;" />
+                        <button type="button" class="btn btn-primary btn-sm">Kirim</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 3: RIWAYAT SESI (SESSIONS)
+                 ============================================================== -->
+            <section id="panel-sessions" class="app-view-panel">
+              <div class="classroom-page-container">
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Riwayat Sesi &amp; Transkrip</h1>
+                    <p>Daftar percakapan dan sesi ruang kelas yang telah selesai beserta dokumen transkrip.</p>
+                  </div>
+                  <button id="btn-export-all-sessions" type="button" class="btn btn-primary btn-sm">Unduh Semua Transkrip (.zip)</button>
+                </div>
+
+                <div class="card">
+                  <table class="session-history-table">
+                    <thead>
+                      <tr>
+                        <th>Nama Sesi / Topik</th>
+                        <th>Waktu &amp; Tanggal</th>
+                        <th>Durasi</th>
+                        <th>Peserta</th>
+                        <th>Bahasa</th>
+                        <th>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Studi Lingkungan: Air Bersih</strong></td>
+                        <td>9 Nov 2026, 10:15</td>
+                        <td>42 Menit</td>
+                        <td>4 Peserta</td>
+                        <td><span class="state-pill">BISINDO + FSL</span></td>
+                        <td>
+                          <button type="button" class="btn btn-outline btn-sm">Lihat Transkrip</button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>Percakapan Mandiri 1-on-1</strong></td>
+                        <td>8 Nov 2026, 15:30</td>
+                        <td>18 Menit</td>
+                        <td>2 Peserta</td>
+                        <td><span class="state-pill">BISINDO &rarr; ID</span></td>
+                        <td>
+                          <button type="button" class="btn btn-outline btn-sm">Lihat Transkrip</button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong>Latihan Kosakata Fonologi</strong></td>
+                        <td>7 Nov 2026, 14:00</td>
+                        <td>25 Menit</td>
+                        <td>1 Peserta</td>
+                        <td><span class="state-pill">32 Gloss</span></td>
+                        <td>
+                          <button type="button" class="btn btn-outline btn-sm">Lihat Transkrip</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 4: PANDUAN BAHASA & KAMUS FONOLOGI
+                 ============================================================== -->
+            <section id="panel-guide" class="app-view-panel">
+              <div class="classroom-page-container">
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Panduan Bahasa &amp; Kamus Fonologi</h1>
+                    <p>Database 32 konsep kata isyarat BISINDO &amp; FSL beserta 26 abjad ejaan jari A–Z.</p>
+                  </div>
+                </div>
+
+                <div class="card" style="margin-bottom:1.5rem;">
+                  <div class="card-header">
+                    <h3 class="card-title">Peraga Kerangka Isyarat Referensi (L3 Skeletons)</h3>
+                    <span id="l3-canvas-label" class="muted" style="font-size:0.85rem;">Peraga Kerangka L3: HALO</span>
+                  </div>
+                  <div style="width:100%; max-width:640px; aspect-ratio:16/9; margin:0 auto; background:#0b1f35; border-radius:var(--radius-md); overflow:hidden;">
+                    <canvas id="l3-canvas" width="640" height="360" style="width:100%; height:100%; object-fit:contain;"></canvas>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header" style="flex-wrap:wrap; gap:0.75rem;">
+                    <h3 class="card-title">Filter Kosakata</h3>
+                    <div class="chip-row" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                      <button type="button" class="btn btn-outline btn-sm active" data-concept-filter="Semua">Semua 32 Kata</button>
+                      <button type="button" class="btn btn-outline btn-sm" data-concept-filter="Abjad">26 Abjad (A-Z)</button>
+                      <button type="button" class="btn btn-outline btn-sm" data-concept-filter="Sapaan">Sapaan</button>
+                      <button type="button" class="btn btn-outline btn-sm" data-concept-filter="Subjek">Subjek</button>
+                      <button type="button" class="btn btn-outline btn-sm" data-concept-filter="Aktivitas">Aktivitas</button>
+                      <button type="button" class="btn btn-outline btn-sm" data-concept-filter="Objek Kelas">Objek Kelas</button>
+                    </div>
+                  </div>
+                  <div id="concept-board-grid" class="concept-grid"></div>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 5: MODE LATIHAN MANDIRI
+                 ============================================================== -->
+            <section id="panel-practice" class="app-view-panel">
+              <div class="classroom-page-container">
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Mode Latihan Mandiri</h1>
+                    <p>Uji kecakapan berisyarat Anda di depan kamera dengan verifikasi real-time AI.</p>
+                  </div>
+                  <span class="state-pill live">Skor Beruntun: <strong id="practice-streak" style="margin-left:4px;">0</strong></span>
+                </div>
+
+                <div class="translation-stage-grid">
+                  <div class="card">
+                    <h3 class="card-title" style="margin-bottom:1rem;">Target Isyarat</h3>
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                      <select id="practice-target-select" style="flex:1; padding:0.55rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); font-weight:700;"></select>
+                      <button id="btn-practice-random" type="button" class="btn btn-outline btn-sm">Acak</button>
+                      <button id="btn-practice-try" type="button" class="btn btn-primary btn-sm">Uji Isyarat</button>
+                    </div>
+                    <div id="practice-feedback" class="card" style="background:var(--surface-muted); border-style:dashed; padding:1.25rem; font-weight:600; text-align:center;">
+                      Pilih kosakata target lalu peragakan di depan kamera Anda.
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <h3 class="card-title" style="margin-bottom:0.75rem;">Contoh Gerakan Referensi</h3>
+                    <div style="width:100%; aspect-ratio:16/9; background:#0b1f35; border-radius:var(--radius-md); overflow:hidden;">
+                      <canvas id="practice-ref-canvas" width="480" height="270" style="width:100%; height:100%;"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 6: PEREKAM DATASET MULTIMODAL
+                 ============================================================== -->
+            <section id="panel-recorder" class="app-view-panel">
+              <div class="classroom-page-container">
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Perekam Dataset Multimodal</h1>
+                    <p>Alat akuisisi data terpadu (Video WebM + Audio WAV + Citra + Keypoint 86 Titik).</p>
+                  </div>
+                  <span class="state-pill">Klip Terekam: <strong id="rec-clip-count" style="margin-left:4px;">0</strong></span>
+                </div>
+
+                <div class="card">
+                  <p style="color:var(--text-secondary); margin-bottom:1.5rem; font-size:0.92rem;">
+                    Satu sesi rekaman menangkap video WebM, audio WAV, citra portrait, hand crop 224x224, dan keypoint 86 titik JSON ke dalam arsip <code>.zip</code> siap olah oleh pipeline ML SignBridge.
+                  </p>
+                  <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center;">
+                    <label style="font-size:0.85rem; font-weight:600;">Penutur:
+                      <select id="rec-signer" style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem;">
+                        <option value="S01">S01 (Farrel)</option>
+                        <option value="S02">S02 (Jonnathan)</option>
+                        <option value="S03">S03 (Gloria)</option>
+                        <option value="S04">S04 (Mitra 1)</option>
+                      </select>
+                    </label>
+                    <label style="font-size:0.85rem; font-weight:600;">Kategori:
+                      <select id="rec-category" style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem;">
+                        <option value="gloss">Gloss Kata (32 Kelas)</option>
+                        <option value="letter">Huruf Ejaan Jari (A-Z)</option>
+                      </select>
+                    </label>
+                    <label style="font-size:0.85rem; font-weight:600;">Target:
+                      <select id="rec-target" style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem;"></select>
+                    </label>
+                    <button id="btn-record-clip" type="button" class="btn btn-primary btn-sm">Rekam Klip (2.5 dtk)</button>
+                    <button id="btn-export-zip" type="button" class="btn btn-outline btn-sm">Unduh Paket Dataset (.zip)</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+
+            <!-- ==============================================================
+                 PANEL 7: PENGATURAN & AKSESIBILITAS (SETTINGS)
+                 ============================================================== -->
+            <section id="panel-settings" class="app-view-panel">
+              <div class="classroom-page-container">
+                <div class="live-page-header">
+                  <div class="live-page-title-box">
+                    <h1>Pengaturan &amp; Aksesibilitas</h1>
+                    <p>Sesuaikan tampilan visual, sensitivitas AI, dan preferensi aksesibilitas Anda.</p>
+                  </div>
+                </div>
+
+                <div class="card settings-section-block">
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Ukuran Teks Teks Langsung</h4>
+                      <p>Atur ukuran font caption teks langsung agar nyaman dibaca.</p>
+                    </div>
+                    <select id="setting-caption-size" style="padding:0.45rem 0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); font-weight:600;">
+                      <option value="normal">Normal (1.15rem)</option>
+                      <option value="large">Besar (1.5rem)</option>
+                      <option value="xlarge">Ekstra Besar (2rem)</option>
+                    </select>
+                  </div>
+
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Mode Kontras Tinggi</h4>
+                      <p>Tingkatkan kontras antarmuka untuk visibilitas maksimal.</p>
+                    </div>
+                    <input id="setting-high-contrast" type="checkbox" style="width:20px; height:20px; cursor:pointer;" />
+                  </div>
+
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Kurangi Animasi (Reduced Motion)</h4>
+                      <p>Nonaktifkan transisi dan animasi gerak jika Anda sensitif.</p>
+                    </div>
+                    <input id="setting-reduced-motion" type="checkbox" style="width:20px; height:20px; cursor:pointer;" />
+                  </div>
+
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Suara Otomatis Hasil Isyarat (TTS)</h4>
+                      <p>Secara otomatis membacakan teks yang terbentuk dari isyarat.</p>
+                    </div>
+                    <input id="setting-auto-tts" type="checkbox" checked style="width:20px; height:20px; cursor:pointer;" />
+                  </div>
+
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Sensitivitas Pengenalan Isyarat</h4>
+                      <p>Ambang batas keyakinan model AI (0.4 – 0.9).</p>
+                    </div>
+                    <input id="setting-sensitivity" type="range" min="0.4" max="0.9" step="0.05" value="0.65" style="width:160px;" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </main>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

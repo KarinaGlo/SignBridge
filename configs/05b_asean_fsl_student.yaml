@@ -1,0 +1,26 @@
+# configs/05b_asean_fsl_student.yaml — X4: Transfer Lintas Negara BISINDO -> FSL-105 (Student PoseTransformer)
+experiment_id: "X4_asean_fsl_student"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  source_filter: "fsl"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  augment: true
+model:
+  type: "student"
+  d_model: 160
+  nhead: 4
+  num_layers: 4
+  dropout: 0.1
+  pretrained_ckpt: "runs/04_distill_student/best.pt"
+training:
+  epochs: 30
+  batch_size: 16
+  lr: 0.0004
+  weight_decay: 0.01
+  label_smoothing: 0.1
+output_dir: "runs/05b_asean_fsl_student"
+

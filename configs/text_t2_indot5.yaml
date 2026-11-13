@@ -1,0 +1,13 @@
+# configs/text_t2_indot5.yaml — T2: IndoT5-small Fine-tuned Gloss -> Kalimat Indonesia
+experiment_id: "T2_indot5_small_ft"
+seed: 42
+model_type: "indot5"
+pretrained_name: "LazarusNLP/IndoNanoT5-base"
+epochs: 10
+batch_size: 8
+lr: 0.0001
+train_tsv: "data/text/train.tsv"
+val_tsv: "data/text/val.tsv"
+test_tsv: "data/text/test_manual.tsv"
+output_dir: "runs/text_t2_indot5"
+

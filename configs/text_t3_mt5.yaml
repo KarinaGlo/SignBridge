@@ -1,0 +1,13 @@
+# configs/text_t3_mt5.yaml — T3: mT5-small Multilingual Gloss -> Kalimat (Indonesia + Filipino)
+experiment_id: "T3_mt5_small_multilingual"
+seed: 42
+model_type: "mt5"
+pretrained_name: "google/mt5-small"
+epochs: 10
+batch_size: 8
+lr: 0.0001
+train_tsv: "data/text/train.tsv"
+val_tsv: "data/text/val.tsv"
+test_tsv: "data/text/test_manual.tsv"
+output_dir: "runs/text_t3_mt5"
+

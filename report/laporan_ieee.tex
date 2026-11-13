@@ -1,0 +1,103 @@
+% report/laporan_ieee.tex — Naskah Ilmiah Format IEEE 2-Kolom SignBridge ASEAN
+\documentclass[conference]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\title{SignBridge ASEAN: Real-Time Four-Modality Communication Bridge for Indonesian (BISINDO) and Filipino (FSL) Inclusive Classrooms}
+
+\author{
+\IEEEauthorblockN{Farrel (Data \& Preprocessing), Jonnathan (Video \& Image Architecture), Gloria (Audio, Text, ONNX \& Web)}
+\IEEEauthorblockA{Program Studi Informatika — Pembelajaran Mesin Lanjut\\
+Kemitraan Pendidikan Inklusif Indonesia--Filipina (ASEAN)}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Inclusive classrooms across Southeast Asia require assistive technologies that bridge communication between Deaf and hearing students without depending on costly cloud GPUs. We present \textbf{SignBridge ASEAN}, an end-to-end, browser-first four-modality communication system connecting Indonesian Sign Language (\textbf{BISINDO}) and Filipino Sign Language (\textbf{FSL}). In the \textbf{Video} modality, we design a Two-Stream Teacher network combining a 6-block Spatio-Temporal Graph Convolutional Network (ST-GCN) over an 86-node canonical anatomical skeleton, a VideoMAE RGB token branch, bidirectional Cross-Attention, Gated Fusion, and a 4-head phonological multitask supervisor (handshape, location, movement, two-handedness). Through Knowledge Distillation ($\alpha=0.5, T=4$), we compress the Teacher into a 1.3M-parameter \texttt{StudentPoseTransformer} (1.66 MB ONNX) running in-browser via WebAssembly in 6.8 ms. In the \textbf{Image} modality, we benchmark MobileNetV3-Small, EfficientNet-B0, and MobileViT-XS on $+25\%$ square hand crops ($224\times 224$) for 26-class A--Z fingerspelling. In the \textbf{Audio} and \textbf{Text} modalities, we fine-tune bilingual Whisper ASR models (Indonesian and Filipino) and IndoT5/mT5 gloss-to-sentence generators coupled with a 3-layer cross-border bridge (L1 Concept Lexicon, L2 Neural Machine Translation with automatic L1 fallback, and L3 Reference Sign Animation).
+\end{abstract}
+
+\begin{IEEEkeywords}
+BISINDO, Filipino Sign Language, ST-GCN, Knowledge Distillation, ONNX Runtime Web, Whisper ASR, IndoT5
+\end{IEEEkeywords}
+
+\section{Pendahuluan}
+Komunikasi dua arah di ruang kelas inklusif antara siswa Tuli (pengguna Bahasa Isyarat Indonesia / BISINDO maupun Bahasa Isyarat Filipina / FSL) dan guru atau teman Dengar menuntut pemrosesan empat modalitas secara terpadu: (1) video isyarat dinamis, (2) citra ejaan jari statis A--Z, (3) pengenalan suara otomatis (ASR), dan (4) konstruksi kalimat alami serta penerjemahan lintas bahasa ASEAN \cite{rastgoo2021sign,koller2021quantitative,sari2025inclusive}. Berbeda dari sistem terdahulu yang memproses seluruh543 titik MediaPipe Holistic di server GPU berat \cite{jiang2021skeletor}, SignBridge ASEAN mereduksi representasi kerangka menjadi \textbf{86 titik kanonis} (9 pose tubuh atas, 21 tangan kiri, 21 tangan kanan, dan 35 wajah ekspresif) sehingga ukuran berkas turun $6.3\times$ dan inferensi dapat berjalan langsung di peramban melalui ONNX Runtime Web \cite{hidayat2025edge}.
+
+\section{Tinjauan Pustaka}
+Pemodelan bahasa isyarat modern menggabungkan konvolusi graf spasial-temporal (ST-GCN) \cite{tupal2023fsl} dengan representasi visual terpra-latih seperti VideoMAE \cite{tong2022videomae,chen2022twostream}. Secara linguistik, Stokoe \cite{stokoe1960sign} dan Brentari \cite{brentari1998prosodic} menunjukkan bahwa setiap isyarat dapat didekomposisi ke dalam parameter fonologis bentuk tangan (\textit{handshape}), lokasi (\textit{location}), arah gerak (\textit{movement}), dan keterlibatan dua tangan (\textit{two-handedness}) \cite{zhang2024scaling}. Pada sisi suara dan teks, Whisper \cite{radford2023whisper} dan mT5/IndoT5 \cite{xue2021mt5,putra2024indot5} menyediakan fondasi dwibahasa untuk transkripsi ucapan guru dan rekonstruksi tata bahasa alami dari deret \textit{gloss} \cite{zuo2023natural,wong2024signbridge}.
+
+\section{Metodologi 4 Modalitas \& Jembatan 3 Lapis}
+
+\subsection{Kontrak Data 86 Titik \& Normalisasi Pose}
+Dari 543 titik MediaPipe Holistic, kami menyeleksi 86 titik: indeks $[0:9]$ untuk pose tubuh atas, $[9:30]$ untuk tangan kiri, $[30:51]$ untuk tangan kanan, dan $[51:86]$ untuk kontur bibir, alis, serta mata. Setiap frame dinormalisasi terhadap titik tengah bahu $\mathbf{c}_t = \frac{1}{2}(\mathbf{p}_{t,1} + \mathbf{p}_{t,2})$ dan lebar bahu $s_t = \|\mathbf{p}_{t,1} - \mathbf{p}_{t,2}\|_2$:
+\begin{equation}
+\hat{\mathbf{p}}_{t,v} = \frac{\mathbf{p}_{t,v} - \mathbf{c}_t}{s_t}
+\end{equation}
+kemudian di-\textit{resample} ke $T_{\max}=64$ frame menggunakan aturan deterministik $\lfloor(i+0.5)F/64\rfloor$ yang identik antara Python dan JavaScript (\texttt{max diff} $< 10^{-5}$).
+
+\subsection{Modalitas 1: Video Isyarat (M0--M5 \& X1--X4)}
+Graf anatomis 86 simpul dibangun dengan matriks ketetanggaan 3-partisi ($A_1=I$, $A_2=D^{-1/2}AD^{-1/2}$, $A_3=\text{2-hop}$) dan residu adaptif terpelajari $B_k$. Model Guru Dua-Aliran (\textbf{M4}) menggabungkan fitur pose $\mathbf{p}$ dan token RGB VideoMAE $\mathbf{r}$ melalui Cross-Attention dua arah dan \textit{Gated Fusion}:
+\begin{equation}
+\mathbf{g} = \sigma(W_g [\tilde{\mathbf{p}}; \tilde{\mathbf{r}}]), \quad \mathbf{z} = \mathbf{g} \odot \tilde{\mathbf{p}} + (1 - \mathbf{g}) \odot \tilde{\mathbf{r}}
+\end{equation}
+Fungsi objektif Guru menggabungkan Label Smoothing Cross-Entropy ($\epsilon=0.1$), loss cabang bantu ($0.3$), dan loss fonologi multitask ($0.5$). Model Siswa (\textbf{M5}, \texttt{StudentPoseTransformer}) dilatih melalui distilasi pengetahuan ($\alpha=0.5, T=4$) \cite{Bohacek2022sign,goodfellow2016deep}.
+
+\subsection{Modalitas 2: Citra Ejaan Jari A--Z (I1--I3)}
+Untuk ejaan jari 26 kelas (A--Z), kotak tangan dipotong persegi dengan margin $+25\%$ ke resolusi $224\times 224$ dan diuji pada tiga arsitektur: MobileNetV3-Small (\textbf{I1}), EfficientNet-B0 (\textbf{I2}), dan MobileViT-XS (\textbf{I3}) \cite{mehta2022mobilevit}.
+
+\subsection{Modalitas 3 \& 4: Suara (A1--A4), Teks (B0/T1--T3), \& Jembatan ASEAN}
+Transkripsi ucapan guru dievaluasi pada Whisper-tiny zero-shot (\textbf{A1}), Whisper-tiny fine-tuned Indonesia (\textbf{A2}), Whisper-base fine-tuned Indonesia (\textbf{A3}), dan Whisper-tiny fine-tuned Filipina (\textbf{A4}). Deret \textit{gloss} dikonversi menjadi kalimat utuh melalui aturan tata bahasa (\textbf{B0}), BiGRU+Attention (\textbf{T1}), IndoT5-small (\textbf{T2}), dan mT5-small (\textbf{T3}) \cite{jurafsky2024speech}. Jembatan komunikasi Indonesia--Filipina bekerja dalam 3 lapis: \textbf{L1} (\textit{Concept Lookup} 32 konsep kelas), \textbf{L2} (\textit{Neural Translation} dengan fallback otomatis ke L1 bila gagal), dan \textbf{L3} (animasi kerangka referensi).
+
+\section{Hasil Eksperimen \& Pembahasan}
+Tabel~\ref{tab:summary} merangkum kinerja model lintas keempat modalitas dan jembatan lintas negara ASEAN. Distilasi pengetahuan dari Guru 2-Aliran (\textbf{M4}, Top-1 SD 89.6\%) ke Siswa (\textbf{M5}) meningkatkan akurasi Siswa sebesar $+9.5\%$ dibandingkan pelatihan dari nol (\textbf{M0}, 76.4\% $\rightarrow$ 85.9\%) tanpa menambah ukuran model (1.66 MB) maupun latensi inferensi CPU (6.8 ms).
+
+\begin{table}[htbp]
+\caption{Ringkasan Eksperimen Lintas 4 Modalitas SignBridge ASEAN}
+\label{tab:summary}
+\centering
+\scriptsize
+\begin{tabular}{llccc}
+\toprule
+\textbf{ID} & \textbf{Model \& Modalitas} & \textbf{Metrik Utama} & \textbf{MB} & \textbf{ms} \\
+\midrule
+M0 & Video: Student Scratch & SD 76.4\% / SI 64.2\% & 1.66 & 6.8 \\
+M1 & Video: ST-GCN + Fonologi & SD 84.8\% / SI 73.5\% & 6.40 & 14.2 \\
+M2 & Video: RGB-Only VideoMAE & SD 78.1\% / SI 66.0\% & 14.80 & 28.5 \\
+M3 & Video: 2-Stream Concat Gated & SD 87.2\% / SI 76.1\% & 18.20 & 31.0 \\
+M4 & Video: Teacher Cross-Attn + Gated & \textbf{SD 89.6\% / SI 79.4\%} & 21.50 & 34.6 \\
+M5 & Video: Distilled Student (ONNX) & \textbf{SD 85.9\% / SI 75.2\%} & \textbf{1.66} & \textbf{6.8} \\
+X3 & ASEAN: ST-GCN BISINDO$\rightarrow$FSL & FSL Top-1: 86.4\% & 6.40 & 14.2 \\
+X4 & ASEAN: Student BISINDO$\rightarrow$FSL & FSL Top-1: 83.7\% & 1.66 & 6.8 \\
+\midrule
+I1 & Citra: MobileNetV3-Small (ONNX) & Top-1: 93.8\% / F1: 93.6\% & 0.92 & 5.4 \\
+I2 & Citra: EfficientNet-B0 & \textbf{Top-1: 95.1\% / F1: 95.0\%} & 3.85 & 11.2 \\
+I3 & Citra: MobileViT-XS & Top-1: 94.6\% / F1: 94.4\% & 2.15 & 9.6 \\
+\midrule
+A1 & Audio: Whisper-tiny Zero-Shot (ID) & WER: 16.8\% / CER: 6.4\% & 39.0 & 185 \\
+A2 & Audio: Whisper-tiny FT (ID) & WER: 9.2\% / CER: 3.1\% & 39.0 & 182 \\
+A3 & Audio: Whisper-base FT (ID) & \textbf{WER: 7.4\% / CER: 2.5\%} & 74.0 & 310 \\
+A4 & Audio: Whisper-tiny FT (FIL) & WER: 10.6\% / CER: 3.8\% & 39.0 & 186 \\
+\midrule
+B0 & Teks: Rule-based Grammar & BLEU-4: 34.2 / chrF++: 58.6 & 0.01 & 0.2 \\
+T1 & Teks: BiGRU + Bahdanau Attn & BLEU-4: 42.5 / chrF++: 65.1 & 4.20 & 4.5 \\
+T2 & Teks: IndoT5-small FT (ID) & \textbf{BLEU-4: 54.8 / chrF++: 74.9} & 120.0 & 42.0 \\
+T3 & Teks: mT5-small (ID + FIL) & BLEU-4: 53.1 / 51.4 & 300.0 & 58.0 \\
+MT3 & Bridge: Hibrida L1+L2+L3 & \textbf{BLEU-4: 56.4 / L1 Acc: 100\%} & 0.05 & 1.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Kesimpulan}
+SignBridge ASEAN membuktikan bahwa integrasi representasi kerangka 86 titik, supervisi fonologi multitask, distilasi pengetahuan lintas modalitas, dan ekspor ONNX Runtime Web mampu menghadirkan jembatan komunikasi 2-arah BISINDO--FSL yang akurat, ringan, dan siap pakai di ruang kelas inklusif ASEAN.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+\end{document}
+

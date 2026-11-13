@@ -1,0 +1,12 @@
+# configs/asr_a4_tiny_ft_fil.yaml — A4: Whisper-tiny Fine-tuned Bahasa Filipina (Tagalog/FSL Bridge)
+experiment_id: "A4_whisper_tiny_ft_fil"
+seed: 42
+model_name: "openai/whisper-tiny"
+language: "tl"
+finetune: true
+epochs: 5
+batch_size: 8
+lr: 0.00001
+dataset_csv: "data/audio/metadata_fil.csv"
+output_dir: "runs/asr_a4_tiny_ft_fil"
+

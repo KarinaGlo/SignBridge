@@ -1,0 +1,31 @@
+# configs/03_fusion_bisindo.yaml — M4 (E5): Teacher 2-Stream (ST-GCN + VideoMAE RGB + Cross-Attn + Gated Fusion)
+experiment_id: "M4_fusion_bisindo"
+seed: 42
+protocol: "SD"
+dataset:
+  manifest: "data/manifest.csv"
+  phonology_csv: "data/phonology.csv"
+  num_classes: 32
+  seq_len: 64
+  num_keypoints: 86
+  use_rgb: true
+  augment: true
+model:
+  type: "fusion"
+  hidden_dim: 256
+  rgb_dim: 768
+  fusion_layers: 2
+  nhead: 4
+  rgb_drop_p: 0.1
+  use_phonology: true
+  pretrained_ckpt: "runs/02_pose_finetune_bisindo/best.pt"
+training:
+  epochs: 40
+  batch_size: 16
+  lr: 0.0003
+  weight_decay: 0.01
+  label_smoothing: 0.1
+  lambda_aux: 0.3
+  lambda_phonology: 0.5
+output_dir: "runs/03_fusion_bisindo"
+

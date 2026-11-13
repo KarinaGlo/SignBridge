@@ -1,0 +1,86 @@
+# =============================================================================
+# .gitignore — SignBridge ID-PH (BISINDO <-> FSL)
+# Mencegah kebocoran kredensial, database lokal, cache, & dataset mentah besar
+# =============================================================================
+
+# 1. Kredensial & Variabel Lingkungan Rahasia (Tetap lacak .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials.json
+
+# 2. Cache Python, Pytest, Hypothesis, & Virtual Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# 3. Node.js & Frontend Build Cache
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 4. Database Lokal & Volume Operasional
+*.db
+*.sqlite
+*.sqlite3
+data/signbridge_operational.db
+pgdata/
+
+# 5. Dataset Mentah Berukuran Besar (Video, Audio, Citra, Arsip, & Keypoint NPZ)
+# Catatan: Metadata ringan (.csv, .tsv, .txt, .md) di data/ tetap dilacak.
+data/raw/
+data/processed/
+data/keypoints/
+data/external/
+data/downloads/
+*.mp4
+*.webm
+*.avi
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.npz
+*.npy
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# 6. Checkpoint Bobot Pelatihan PyTorch Besar (Tetap lacak result.json & web/model/*.onnx)
+*.pt
+*.pth
+*.ckpt
+runs/**/*.pt
+runs/**/*.pth
+!runs/**/result.json
+
+# 7. Berkas Sistem Operasi & Editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

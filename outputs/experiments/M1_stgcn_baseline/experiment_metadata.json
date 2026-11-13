@@ -1,0 +1,26 @@
+{
+  "model_architecture": "ST-GCN (Spatial-Temporal Graph Convolutional Network)",
+  "num_layers": 4,
+  "channel_progression": [
+    64,
+    64,
+    128,
+    256
+  ],
+  "parameter_count": 1096408,
+  "hidden_dim": 256,
+  "dataset": "WL-BISINDO",
+  "num_classes": 32,
+  "input_tensor_shape": "[B, 64, 86, 3]",
+  "valid_mask_shape": "[B, 64, 86]",
+  "num_epochs_trained": 89,
+  "best_epoch": 79,
+  "total_training_time_minutes": 774.07,
+  "protocol": "Signer-Dependent (SD)",
+  "framework_versions": {
+    "python": "3.11.0b4 (main, Jul 11 2022, 15:47:56) [MSC v.1932 64 bit (AMD64)]",
+    "torch": "2.2.2+cpu",
+    "numpy": "1.26.4",
+    "sklearn": "1.9.1"
+  }
+}

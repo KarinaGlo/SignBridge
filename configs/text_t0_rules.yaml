@@ -1,0 +1,9 @@
+# configs/text_t0_rules.yaml — B0: Konstruktor Kalimat Berbasis Aturan Tata Bahasa (Tanpa Pelatihan)
+experiment_id: "B0_rules_baseline"
+seed: 42
+model_type: "rules"
+train_tsv: "data/text/train.tsv"
+val_tsv: "data/text/val.tsv"
+test_tsv: "data/text/test_manual.tsv"
+output_dir: "runs/text_t0_rules"
+

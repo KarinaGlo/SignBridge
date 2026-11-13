@@ -1,0 +1,19 @@
+# configs/image_i2_efficientnet.yaml — I2: EfficientNet-B0 untuk Ejaan Jari A-Z (26 Kelas, 224x224)
+experiment_id: "I2_efficientnet_b0"
+seed: 42
+dataset:
+  root_dir: "data/fingerspelling_crops"
+  image_size: 224
+  num_classes: 26
+model:
+  arch: "efficientnet_b0"
+  num_classes: 26
+  dropout: 0.2
+training:
+  epochs: 25
+  batch_size: 32
+  lr: 0.0003
+  weight_decay: 0.01
+  label_smoothing: 0.05
+output_dir: "runs/image_i2_efficientnet"
+

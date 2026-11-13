@@ -1,0 +1,78 @@
+# configs/train_bisindo.yaml
+# Konfigurasi pelatihan SignBridge untuk dataset WL-BISINDO (32 gloss)
+# Semua parameter dikonfigurasi di sini — tidak ada nilai hardcoded di kode sumber.
+
+seed: 42
+
+model:
+  num_classes: 32
+  use_phonological_head: true
+
+  stream_a:
+    arch: "stgcn"          # pilihan: "stgcn" | "pose_transformer"
+    num_blocks: 10          # valid: 4–20
+    hidden_dim: 256         # valid: 128–512
+    num_heads: 8            # valid: 1–16
+
+  stream_b:
+    arch: "videomae"        # pilihan: "videomae" | "i3d" | "mobilevit"
+    pretrained_url: "https://huggingface.co/MCG-NJU/videomae-base-finetuned-kinetics/resolve/main/pytorch_model.bin"
+    frozen_layers: []       # daftar nama layer yang akan dibekukan, kosong = tidak ada
+
+  fusion:
+    num_heads: 8
+    dim: 512
+
+  gloss_head:
+    label_smoothing: 0.1    # valid: [0.0, 1.0)
+
+  phonological_head:
+    num_handshape: 20       # valid: 10–50
+    num_lokasi: 10          # valid: 5–20
+    num_arah_gerak: 8       # valid: 4–12
+    lambda_handshape: 0.3   # valid: [0.0, 1.0]
+    lambda_lokasi: 0.3      # valid: [0.0, 1.0]
+    lambda_arah_gerak: 0.3  # valid: [0.0, 1.0]
+
+training:
+  base_lr: 1.0e-4           # valid: 1e-5 to 1e-2
+  pretrained_lr_factor: 0.1
+  early_stopping_patience: 10
+  max_checkpoints: 3
+  max_epochs: 100
+
+augmentation:
+  enabled: true
+  temporal:
+    speed_range: [0.7, 1.3]
+    max_frame_drop_ratio: 0.20
+    max_temporal_jitter: 3
+  spatial_keypoint:
+    flip_prob: 0.5
+    rotation_range: [-15.0, 15.0]
+    noise_std: 0.02
+  spatial_rgb:
+    crop_scale_range: [0.8, 1.0]
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+
+distillation:
+  alpha: 0.7                # valid: [0.0, 1.0]
+  temperature: 4.0          # valid: [1.0, 10.0]
+  onnx_opset: 17
+  max_model_size_mb: 10
+
+data:
+  dataset: "wl-bisindo"
+  kaggle_identifier: "dataset/wl-bisindo"
+  split_ratios: [0.70, 0.15, 0.15]
+  t_max: 128                # panjang sekuens maksimum (frame)
+  t_sample_rgb: 16          # jumlah frame uniform sampling untuk Stream_B
+
+paths:
+  data_dir: "data/wl_bisindo"
+  keypoint_dir: "data/keypoints/wl_bisindo"
+  checkpoint_dir: "checkpoints/bisindo"
+  log_dir: "logs/bisindo"
+  output_dir: "outputs/bisindo"

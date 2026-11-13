@@ -1,0 +1,19 @@
+# configs/image_i3_mobilevit.yaml — I3: MobileViT-XS (Hibrida CNN + ViT) untuk Ejaan Jari A-Z
+experiment_id: "I3_mobilevit_xs"
+seed: 42
+dataset:
+  root_dir: "data/fingerspelling_crops"
+  image_size: 224
+  num_classes: 26
+model:
+  arch: "mobilevit_xs"
+  num_classes: 26
+  dropout: 0.2
+training:
+  epochs: 25
+  batch_size: 32
+  lr: 0.0003
+  weight_decay: 0.01
+  label_smoothing: 0.05
+output_dir: "runs/image_i3_mobilevit"
+
