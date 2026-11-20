@@ -240,7 +240,7 @@ def run(cfg: Dict, smoke: bool = False, epochs_override: Optional[int] = None) -
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
-            tot += float(loss) * b["label"].size(0)
+            tot += float(loss.detach()) * b["label"].size(0)
             n += b["label"].size(0)
             correct += int((out["logits"].argmax(1) == b["label"]).sum())
         val = evaluate(model, dl["val"], device)
