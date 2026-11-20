@@ -15,6 +15,12 @@ Dokumen ini merangkum protokol eksperimen, matriks ablasi **E1–E7**, transfer 
 | **M4 (E5)** | `configs/03_fusion_bisindo.yaml` | Teacher 2-Stream Cross-Attention (`fusion_layers=2`) + Gated Fusion | **89.6%** | **79.4%** | **89.3%** | 21.50 | 34.6 |
 | **M5 (E6)** | `configs/04_distill_student.yaml` | Distilled `StudentPoseTransformer` ($\alpha=0.5, T=4.0$) | **85.9%** | **75.2%** | **85.6%** | **1.66** | **6.8** |
 
+### M6 — Fusion Multimodal 4 Modalitas (`configs/06_multimodal_fusion.yaml`)
+
+| Kode | Konfigurasi YAML | Arsitektur | Status |
+|---|---|---|---|
+| **M6** | `configs/06_multimodal_fusion.yaml` | Encoder video/citra/audio/teks → Transformer fusion lintas modalitas → gated modality weighting (bobot dipelajari) → 32 konsep | **Belum dilatih** — menunggu data berpasangan dari Perekam Dataset. Evaluasi wajib: tabel ablasi 15 kombinasi modalitas (`ablation_modalities.csv`). |
+
 ## 2. Transfer Lintas Negara ASEAN: BISINDO -> FSL-105 (X1–X4)
 
 | Kode | Konfigurasi YAML | Skenario Transfer | Top-1 FSL | Selisih vs Scratch |

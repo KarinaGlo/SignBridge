@@ -19,7 +19,7 @@ import { VisionManager, drawSkeleton86, generateReferenceSignKeypoints } from ".
 import { SignRecognizer, SIGN_STATE, isInSigningSpace, checkCameraFraming } from "./recognizer.js";
 import { FingerspellRecognizer } from "./fingerspell.js";
 import { RoomManager } from "./room.js";
-import { MultimodalRecorder } from "./recorder.js";
+import { MultimodalCapture, MultimodalRecorder } from "./recorder.js";
 
 class SignBridgeApp {
   constructor() {
@@ -262,6 +262,8 @@ class SignBridgeApp {
       videoEl,
       canvasEl,
       onFrameKeypoints: ({ kp86, rightHand21, leftHand21, hasVisibleHand }) => {
+        // Perekam Dataset Multimodal: tampung frame asli selama klip direkam
+        if (this.capture && this.capture.active) this.capture.pushFrame(kp86, rightHand21, leftHand21);
         const now = performance.now();
         if (this.lastFrameTime > 0) {
           const delta = now - this.lastFrameTime;
@@ -1026,22 +1028,73 @@ class SignBridgeApp {
     const recBtn = document.getElementById("btn-record-clip");
     const exportBtn = document.getElementById("btn-export-zip");
     const countEl = document.getElementById("rec-clip-count");
+    const statusEl = document.getElementById("rec-status");
+    const sentenceEl = document.getElementById("rec-sentence");
+    const setStatus = (msg) => {
+      if (statusEl) statusEl.textContent = msg;
+    };
+    const refreshSummary = () => {
+      const s = this.recorder.summary();
+      if (countEl) countEl.textContent = String(s.clips);
+      setStatus(
+        `Klip: ${s.clips} · lengkap 4 modalitas: ${s.complete} · video ${s.video} · citra ${s.image} · audio ${s.audio} · teks ${s.text}`
+      );
+    };
+    if (targetSelect && sentenceEl) {
+      targetSelect.addEventListener("change", () => {
+        sentenceEl.value = glossToSentenceLocal([targetSelect.value], "id");
+      });
+    }
 
     if (recBtn) {
-      recBtn.addEventListener("click", () => {
+      recBtn.addEventListener("click", async () => {
+        if (this._recording) return;
         const signer = document.getElementById("rec-signer")?.value || "S01";
         const category = catSelect?.value || "gloss";
         const target = targetSelect?.value || "HALO";
-        const kpSeq = generateReferenceSignKeypoints(target, 64);
-        this.recorder.addClip({
-          signer,
-          category,
-          target,
-          keypoints: kpSeq,
-          sentence: glossToSentenceLocal([target], "id")
-        });
-        if (countEl) countEl.textContent = String(this.recorder.clips.length);
-        speakText(`Klip ${target} tersimpan`, "id-ID");
+        const label = category === "gloss" ? BISINDO_GLOSSES.indexOf(target) : FINGERSPELL_LABELS.indexOf(target);
+        const sentence = (sentenceEl?.value || "").trim();
+
+        // Kamera wajib aktif: keypoint & citra diambil dari frame kamera asli (tanpa data sintetis)
+        if (!this.vision.running) {
+          setStatus("Menyalakan kamera...");
+          const ok = await this.vision.startCamera();
+          if (!ok) {
+            setStatus("Kamera tidak dapat diakses. Klip tidak direkam.");
+            return;
+          }
+        }
+        this._recording = true;
+        recBtn.disabled = true;
+        try {
+          for (const n of [3, 2, 1]) {
+            setStatus(`Bersiap... ${n}`);
+            await new Promise((r) => setTimeout(r, 700));
+          }
+          setStatus(`Merekam ${target} (2,5 detik): peragakan isyarat sambil mengucapkan kalimat.`);
+          this.capture = this.capture || new MultimodalCapture({ videoEl: document.getElementById("camera-video") });
+          const res = await this.capture.capture(2500);
+          if (res.numFrames < 8) {
+            setStatus(`Hanya ${res.numFrames} frame tertangkap; pastikan tubuh & tangan terlihat kamera. Klip dibuang.`);
+            return;
+          }
+          this.recorder.addClip({
+            signer,
+            category,
+            target,
+            label,
+            keypoints: res.keypoints,
+            sentence,
+            wav: res.wav,
+            handJpg: res.handJpg,
+            portraitJpg: res.portraitJpg
+          });
+          refreshSummary();
+          speakText(`Klip ${target} tersimpan`, "id-ID");
+        } finally {
+          this._recording = false;
+          recBtn.disabled = false;
+        }
       });
     }
 
@@ -1049,13 +1102,8 @@ class SignBridgeApp {
       exportBtn.addEventListener("click", () => {
         const signer = document.getElementById("rec-signer")?.value || "S01";
         if (this.recorder.clips.length === 0) {
-          this.recorder.addClip({
-            signer,
-            category: "gloss",
-            target: "HALO",
-            keypoints: generateReferenceSignKeypoints("HALO", 64),
-            sentence: "Halo."
-          });
+          setStatus("Belum ada klip. Rekam minimal satu klip sebelum mengunduh paket.");
+          return;
         }
         const { filename, blob } = this.recorder.exportZipBlob(signer);
         const url = URL.createObjectURL(blob);

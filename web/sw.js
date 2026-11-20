@@ -4,7 +4,7 @@
  * Menyimpan aset statis (HTML, CSS, JS) dan model ONNX di Cache Storage.
  */
 
-const CACHE_NAME = "signbridge-asean-v7";
+const CACHE_NAME = "signbridge-asean-v8";
 const CORE_ASSETS = [
   "./",
   "./index.html",
