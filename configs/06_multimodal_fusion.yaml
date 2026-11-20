@@ -1,0 +1,21 @@
+# configs/06_multimodal_fusion.yaml — M6: SignBridge Multimodal Fusion (video + citra + audio + teks)
+# Satu model menerima 4 modalitas sekaligus; bobot antar-modalitas dipelajari (gated fusion).
+experiment_id: "M6_multimodal_fusion"
+seed: 42
+manifest: "data/multimodal/manifest_multimodal.csv"   # hasil scripts/build_multimodal_manifest.py
+output_dir: "outputs/experiments/M6_multimodal_fusion"
+model:
+  d_model: 128
+  nhead: 4
+  fusion_layers: 2          # lapis Transformer lintas modalitas
+  dropout: 0.1
+  modality_dropout: 0.3     # peluang tiap modalitas dihapus saat training (min. 1 tersisa)
+training:
+  batch_size: 16
+  learning_rate: 0.0005
+  weight_decay: 0.01
+  max_epochs: 80
+  patience: 12              # early stopping
+  label_smoothing: 0.1
+  lambda_aux: 0.3           # bobot loss head unimodal
+  augment: true

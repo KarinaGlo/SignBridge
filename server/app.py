@@ -3,6 +3,7 @@ server/app.py — Kontrak 6 & Langkah 15 (PDF Hal. 11, 28, 30) + Integrasi Postg
 Server FastAPI Ringan SignBridge ASEAN:
   - GET  /health          : Status kesehatan server, model ONNX, & koneksi database (backward-compatible)
   - POST /predict         : Inferensi video isyarat [F, 86, 3] -> Top-K gloss + non-blocking DB log
+  - POST /predict_multimodal : M6 fusion 4 modalitas (keypoints + citra + audio + teks) -> gloss + bobot modalitas
   - POST /asr             : Transkripsi suara guru/teman (Whisper ASR, batas 10 MB -> HTTP 413) + DB log
   - POST /sentence        : Konstruksi kalimat natural dari deret gloss (IndoT5 / B0 fallback) + DB log
   - POST /translate       : Jembatan 3 Lapis ID <-> PH (L1 Concept / L2 Neural MT / L3 Animation) + DB log
@@ -50,6 +51,7 @@ from signbridge.bridge import BridgeModule
 from signbridge.constants import BISINDO_32_GLOSSES, NUM_COORDS, NUM_KEYPOINTS, T_MAX
 from signbridge.features import extract_and_normalize
 from signbridge.text.pseudo_gloss import gloss_to_sentence_rules
+from server.multimodal_service import MultimodalPredictRequest, MultimodalService
 
 MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
 
@@ -147,6 +149,9 @@ def create_app(
         except Exception:
             app.state.ort_session = None
 
+    # Model fusion multimodal M6 (opsional; endpoint mengembalikan 503 jika belum diekspor)
+    app.state.multimodal = MultimodalService(ROOT / "web" / "model" / "multimodal_fusion.onnx")
+
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
         limit = getattr(request.app.state, "rate_limit_per_min", 60)
@@ -172,6 +177,7 @@ def create_app(
         return {
             "status": "ok",
             "model_loaded": app.state.ort_session is not None,
+            "multimodal_model_loaded": app.state.multimodal.available,
             "num_classes": len(BISINDO_32_GLOSSES),
             "concepts_loaded": len(app.state.bridge.concepts),
             "db_connected": db_conn,
@@ -225,7 +231,7 @@ def create_app(
             confidence=top_k_list[0]["confidence"],
             latency_ms=latency_ms,
             room_code=req.room_code,
-            model_code="M5",
+            model_code="M0",
             status="success",
         )
 
@@ -235,6 +241,35 @@ def create_app(
             "top_k": top_k_list,
             "latency_ms": latency_ms,
         }
+
+    @app.post("/predict_multimodal")
+    async def predict_multimodal(req: MultimodalPredictRequest) -> Dict[str, Any]:
+        """M6: satu model fusion menerima video (keypoints), citra, audio, dan teks sekaligus."""
+        t0 = time.perf_counter()
+        service: MultimodalService = app.state.multimodal
+        if not service.available:
+            raise HTTPException(
+                status_code=503,
+                detail="Model fusion M6 (web/model/multimodal_fusion.onnx) belum tersedia. "
+                "Latih dengan signbridge.train_multimodal lalu ekspor dengan signbridge.export_onnx_multimodal.",
+            )
+        try:
+            result = service.predict(req)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        result["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
+        app.state.db.log_inference_safe(
+            endpoint="/predict_multimodal",
+            modality="multimodal",
+            input_summary=f"modalities={'+'.join(result['modalities_used'])}",
+            output_summary=f"top1={result['gloss']} weights={result['modality_weights']}",
+            confidence=result["confidence"],
+            latency_ms=result["latency_ms"],
+            room_code=req.room_code,
+            model_code="M6",
+            status="success",
+        )
+        return result
 
     @app.post("/asr")
     async def transcribe_audio(

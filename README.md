@@ -4,7 +4,7 @@
 
 ---
 
-## Fitur Utama & 6 Kontrak Antarmuka Tim
+## Fitur Utama & 7 Kontrak Antarmuka Tim
 
 1. **Kontrak 1 — Skema Data 86 Titik (`signbridge/constants.py`)**:
    - Menyeleksi 86 titik anatomis dari 543 titik MediaPipe Holistic: `[0:9]` pose tubuh atas, `[9:30]` tangan kiri, `[30:51]` tangan kanan, dan `[51:86]` 35 titik wajah ekspresif.
@@ -19,6 +19,10 @@
    - Model `web/model/fingerspell.onnx` menerima input `image` `float32 [1, 3, 224, 224]` -> output `logits` `[1, 26]`.
 5. **Kontrak 6 — Server Hibrida FastAPI (`server/app.py`)**:
    - Menyediakan endpoint `/health`, `POST /predict`, `POST /asr` (batas 10 MB -> HTTP 413), `POST /sentence`, `POST /translate` (Jembatan 3 Lapis L1/L2/L3), dan relay ruang kelas `WebSocket /ws/{kode}` dengan pembatas laju 60 request/menit/IP (HTTP 429 + `Retry-After`).
+
+6. **Kontrak 7 — Model Fusion Multimodal M6 (`signbridge/models/multimodal.py`)**:
+   - **Satu model** menerima video (keypoint `[64,86,3]`), citra (crop tangan `[3,112,112]`), audio (log-mel `[64,248]`), dan teks (`[64]`) sekaligus, lalu menggabungkannya dengan Transformer lintas modalitas + **gated fusion berbobot yang dipelajari** (`modality_weights [4]`).
+   - Data berpasangan dikumpulkan lewat menu **Perekam Dataset** (kini merekam kamera, mikrofon, foto tangan, dan teks sungguhan); endpoint `POST /predict_multimodal`. Detail: [`docs/MULTIMODAL_FUSION.md`](docs/MULTIMODAL_FUSION.md).
 
 ---
 
@@ -48,6 +52,11 @@ python -m signbridge.image.train_image --config configs/image_i1_mobilenetv3.yam
 python -m signbridge.audio.train_asr --config configs/asr_a1_tiny_zeroshot.yaml
 python -m signbridge.text.train_text --config configs/text_t0_rules.yaml
 python -m signbridge.text.eval_translate --pair id-fil --system rules
+
+# Model Fusion Multimodal M6 (video + citra + audio + teks)
+python scripts/build_multimodal_manifest.py --zips data/raw/web_zips --out data/multimodal
+python -m signbridge.train_multimodal --config configs/06_multimodal_fusion.yaml
+python -m signbridge.export_onnx_multimodal
 ```
 
 ### 3. Menjalankan Server FastAPI & Aplikasi Web PWA

@@ -1,10 +1,16 @@
 /**
  * web/js/recorder.js
  * Langkah 10 (PDF Hal. 18 & 29): Perekam Dataset Multimodal Terpadu di Peramban.
- * Satu klik merekam 4 modalitas sekaligus (Video WebM, Audio, Citra Portrait + Hand Crop 224x224,
- * serta Keypoints 86 titik JSON) dan membungkusnya ke dalam berkas .zip standar tanpa kompresi
- * (STORE ZIP) sehingga bekerja 100% luring tanpa ketergantungan pustaka eksternal.
+ * Satu klik merekam 4 modalitas BERPASANGAN untuk model fusion M6:
+ *   - video : deret keypoint 86 titik dari kamera (MediaPipe Holistic) -> *_kp.json
+ *   - citra : crop tangan 224x224 + portrait dari frame tangan terlengkap -> *_hand.jpg, *_portrait.jpg
+ *   - audio : suara mikrofon, mono 16 kHz PCM 16-bit                    -> *.wav
+ *   - teks  : kalimat konteks yang diketik perekam                       -> kolom `text` + *_meta.json
+ * lalu membungkusnya ke berkas .zip standar tanpa kompresi (STORE ZIP), 100% luring.
+ * Paket dibaca oleh scripts/build_multimodal_manifest.py.
  */
+
+import { computeHandCropBox } from "./handcrop.js";
 
 function crc32(bytes) {
   let c = -1;
@@ -115,73 +121,290 @@ export function buildStoreZip(files) {
   return out;
 }
 
+
+export const TARGET_SAMPLE_RATE = 16000;
+
+/**
+ * Resampling interpolasi linear — identik dengan signbridge.multimodal.features.resample_linear.
+ */
+export function resampleLinear(pcm, srIn, srOut = TARGET_SAMPLE_RATE) {
+  const n = pcm.length;
+  if (srIn === srOut || n === 0) return Float32Array.from(pcm);
+  const nOut = Math.round((n * srOut) / srIn);
+  if (nOut <= 1) return new Float32Array(Math.max(nOut, 0));
+  const out = new Float32Array(nOut);
+  const step = (n - 1) / (nOut - 1);
+  for (let i = 0; i < nOut; i++) {
+    const pos = i * step;
+    const i0 = Math.floor(pos);
+    const i1 = Math.min(n - 1, i0 + 1);
+    const f = pos - i0;
+    out[i] = pcm[i0] * (1 - f) + pcm[i1] * f;
+  }
+  return out;
+}
+
+/**
+ * Float32 [-1, 1] mono -> berkas WAV PCM 16-bit little-endian (Uint8Array).
+ */
+export function encodeWavPCM16(pcm, sampleRate = TARGET_SAMPLE_RATE) {
+  const n = pcm.length;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const writeStr = (off, s) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  v.setUint32(4, 36 + n * 2, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); // PCM
+  v.setUint16(22, 1, true); // mono
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  writeStr(36, "data");
+  v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    v.setInt16(44 + i * 2, Math.round(s * 32767), true);
+  }
+  return new Uint8Array(buf);
+}
+
+/** Escape nilai CSV (kalimat bisa mengandung koma/kutip). */
+export function csvEscape(value) {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function canvasToJpegBytes(canvas, quality = 0.9) {
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      async (blob) => resolve(blob ? new Uint8Array(await blob.arrayBuffer()) : null),
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
+/**
+ * Penangkap klip multimodal asli dari kamera + mikrofon.
+ * app.js memanggil pushFrame() dari callback MediaPipe selama `active`.
+ */
+export class MultimodalCapture {
+  constructor({ videoEl } = {}) {
+    this.videoEl = videoEl;
+    this.active = false;
+    this.frames = [];
+    this.bestHand = null; // { hand21, handCount, frameIdx }
+    this.handSnapshot = null;
+    this.portraitSnapshot = null;
+  }
+
+  pushFrame(kp86, rightHand21, leftHand21) {
+    if (!this.active || !kp86) return;
+    this.frames.push(kp86.map((p) => [p[0] || 0, p[1] || 0, p[2] || 0]));
+    const hand = rightHand21 && rightHand21.length ? rightHand21 : leftHand21;
+    const count = hand ? hand.filter((p) => p && (Math.abs(p.x ?? p[0]) > 1e-5)).length : 0;
+    if (count > 0 && (!this.bestHand || count >= this.bestHand.handCount)) {
+      this.bestHand = { hand21: hand, handCount: count, frameIdx: this.frames.length - 1 };
+      this._snapshot(hand);
+    }
+  }
+
+  _snapshot(hand21) {
+    const v = this.videoEl;
+    if (!v || !v.videoWidth || typeof document === "undefined") return;
+    const W = v.videoWidth;
+    const H = v.videoHeight;
+    const full = document.createElement("canvas");
+    full.width = W;
+    full.height = H;
+    full.getContext("2d").drawImage(v, 0, 0, W, H);
+    const box = computeHandCropBox(hand21.map((p) => (Array.isArray(p) ? p : [p.x, p.y])), W, H, 0.25);
+    const hc = document.createElement("canvas");
+    hc.width = 224;
+    hc.height = 224;
+    hc.getContext("2d").drawImage(full, box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0, 0, 0, 224, 224);
+    const pc = document.createElement("canvas");
+    pc.width = 320;
+    pc.height = Math.round((320 * H) / W);
+    pc.getContext("2d").drawImage(full, 0, 0, pc.width, pc.height);
+    this.handSnapshot = hc;
+    this.portraitSnapshot = pc;
+  }
+
+  /**
+   * Rekam selama durationMs. Mengembalikan { keypoints, wav, handJpg, portraitJpg, numFrames, audioSeconds }.
+   */
+  async capture(durationMs = 2500) {
+    this.frames = [];
+    this.bestHand = null;
+    this.handSnapshot = null;
+    this.portraitSnapshot = null;
+
+    let stream = null;
+    let ctx = null;
+    let node = null;
+    const chunks = [];
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true } });
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      const src = ctx.createMediaStreamSource(stream);
+      node = ctx.createScriptProcessor(4096, 1, 1);
+      node.onaudioprocess = (e) => {
+        if (this.active) chunks.push(Float32Array.from(e.inputBuffer.getChannelData(0)));
+      };
+      src.connect(node);
+      node.connect(ctx.destination);
+    } catch (_e) {
+      // Mikrofon ditolak/tidak ada: klip tetap disimpan tanpa audio (modalitas audio = hilang)
+    }
+
+    this.active = true;
+    await new Promise((r) => setTimeout(r, durationMs));
+    this.active = false;
+
+    let wav = null;
+    let audioSeconds = 0;
+    if (ctx) {
+      const total = chunks.reduce((a, c) => a + c.length, 0);
+      const pcm = new Float32Array(total);
+      let off = 0;
+      for (const c of chunks) {
+        pcm.set(c, off);
+        off += c.length;
+      }
+      const pcm16k = resampleLinear(pcm, ctx.sampleRate, TARGET_SAMPLE_RATE);
+      audioSeconds = pcm16k.length / TARGET_SAMPLE_RATE;
+      if (pcm16k.length > 0) wav = encodeWavPCM16(pcm16k, TARGET_SAMPLE_RATE);
+      try {
+        node.disconnect();
+        await ctx.close();
+      } catch (_e) {}
+    }
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+
+    const handJpg = this.handSnapshot ? await canvasToJpegBytes(this.handSnapshot) : null;
+    const portraitJpg = this.portraitSnapshot ? await canvasToJpegBytes(this.portraitSnapshot, 0.85) : null;
+    return { keypoints: this.frames, wav, handJpg, portraitJpg, numFrames: this.frames.length, audioSeconds };
+  }
+}
+
+export const MANIFEST_HEADER =
+  "clip_id,signer,category,target,label,take,kp_path,handcrop_path,portrait_path,audio_path,text";
+
 export class MultimodalRecorder {
   constructor() {
     this.clips = [];
   }
 
-  addClip({ signer = "S01", category = "gloss", target = "HALO", keypoints = [], sentence = "" } = {}) {
+  /**
+   * Tambah klip. `keypoints` = deret [F][86][3] dari kamera; wav/handJpg/portraitJpg = Uint8Array atau null.
+   */
+  addClip({
+    signer = "S01",
+    category = "gloss",
+    target = "HALO",
+    label = -1,
+    keypoints = [],
+    sentence = "",
+    wav = null,
+    handJpg = null,
+    portraitJpg = null
+  } = {}) {
     const take = String(this.clips.length + 1).padStart(2, "0");
-    const clipId = `${signer}_${category}_${target}_take${take}`;
     const clip = {
-      clipId,
+      clipId: `${signer}_${category}_${target}_take${take}`,
       signer,
       category,
       target,
+      label,
       take: Number(take),
       numFrames: keypoints.length,
       keypoints,
-      sentence: sentence || target,
+      sentence: sentence || "",
+      wav,
+      handJpg,
+      portraitJpg,
       createdAt: new Date().toISOString()
     };
     this.clips.push(clip);
     return clip;
   }
 
-  exportZipBlob(signer = "S01") {
-    const files = [];
-    const manifestRows = [
-      "clip_id,signer,category,target,take,video_path,audio_path,portrait_path,handcrop_path,kp_path"
-    ];
+  /** Ringkasan kelengkapan modalitas (untuk ditampilkan di UI). */
+  summary() {
+    const s = { clips: this.clips.length, video: 0, image: 0, audio: 0, text: 0, complete: 0 };
+    for (const c of this.clips) {
+      const v = c.keypoints.length > 0;
+      const i = !!c.handJpg;
+      const a = !!c.wav;
+      const t = !!c.sentence.trim();
+      s.video += v;
+      s.image += i;
+      s.audio += a;
+      s.text += t;
+      s.complete += v && i && a && t;
+    }
+    return s;
+  }
 
+  buildFiles() {
+    const files = [];
+    const rows = [MANIFEST_HEADER];
     for (const c of this.clips) {
       const base = `${c.signer}/${c.category}/${c.target}/take_${String(c.take).padStart(2, "0")}`;
-      const kpPath = `${base}_kp.json`;
-      const metaPath = `${base}_meta.json`;
+      const kpPath = c.keypoints.length ? `${base}_kp.json` : "";
+      const handPath = c.handJpg ? `${base}_hand.jpg` : "";
+      const portraitPath = c.portraitJpg ? `${base}_portrait.jpg` : "";
+      const audioPath = c.wav ? `${base}.wav` : "";
+      if (kpPath) {
+        files.push({
+          name: kpPath,
+          data: JSON.stringify({
+            clip_id: c.clipId,
+            signer: c.signer,
+            category: c.category,
+            target: c.target,
+            sentence: c.sentence,
+            keypoints: c.keypoints
+          })
+        });
+      }
+      if (handPath) files.push({ name: handPath, data: c.handJpg });
+      if (portraitPath) files.push({ name: portraitPath, data: c.portraitJpg });
+      if (audioPath) files.push({ name: audioPath, data: c.wav });
       files.push({
-        name: kpPath,
-        data: JSON.stringify({
-          clip_id: c.clipId,
-          signer: c.signer,
-          category: c.category,
-          target: c.target,
-          sentence: c.sentence,
-          keypoints: c.keypoints
-        })
-      });
-      files.push({
-        name: metaPath,
+        name: `${base}_meta.json`,
         data: JSON.stringify({
           clip_id: c.clipId,
           created_at: c.createdAt,
-          num_frames: c.numFrames
+          num_frames: c.numFrames,
+          label: c.label,
+          text: c.sentence,
+          modalities: { video: !!kpPath, image: !!handPath, audio: !!audioPath, text: !!c.sentence.trim() }
         })
       });
-      manifestRows.push(
-        `${c.clipId},${c.signer},${c.category},${c.target},${c.take},${base}.webm,${base}.wav,${base}_portrait.jpg,${base}_hand.jpg,${kpPath}`
+      rows.push(
+        [c.clipId, c.signer, c.category, c.target, c.label, c.take, kpPath, handPath, portraitPath, audioPath, c.sentence]
+          .map(csvEscape)
+          .join(",")
       );
     }
+    files.push({ name: "manifest_selfrec.csv", data: rows.join("\n") + "\n" });
+    return files;
+  }
 
-    files.push({
-      name: "manifest_selfrec.csv",
-      data: manifestRows.join("\n") + "\n"
-    });
-
-    const zipBytes = buildStoreZip(files);
+  exportZipBlob(signer = "S01") {
+    const zipBytes = buildStoreZip(this.buildFiles());
     return {
       filename: `SignBridge_${signer}_${Date.now()}.zip`,
       blob: new Blob([zipBytes], { type: "application/zip" })
     };
   }
 }
-
