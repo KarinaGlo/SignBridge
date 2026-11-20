@@ -110,4 +110,7 @@ Jawaban berisi `gloss`, `confidence`, `top_k`, `modalities_used`, dan `modality_
   gunakan kalimat konteks yang bervariasi, dan pertimbangkan uji dengan teks dihapus.
 - **Signer-independent.** Untuk klaim generalisasi, jalankan `--protocol si` (Leave-One-Signer-Out).
 - Pengujian: `pytest tests/test_multimodal_features.py tests/test_multimodal_service.py tests/test_multimodal_model.py`
-  dan `node --test tests/js/recorder.test.mjs`. Tes model membutuhkan PyTorch.
+  dan `node --test tests/js/recorder.test.mjs`. Tes model membutuhkan PyTorch; ekspor ONNX pada PyTorch versi baru
+  juga membutuhkan `onnxscript` (sudah ada di `requirements-train.txt`).
+- Terverifikasi di macOS arm64, Python 3.11.18, PyTorch 2.15.0: 7/7 tes model lolos (termasuk paritas ONNX)
+  dan `--smoke --epochs 2` berjalan sampai akhir.

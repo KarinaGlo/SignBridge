@@ -88,8 +88,8 @@ def test_loss_backward_and_one_step_learns():
         opt.zero_grad()
         loss.backward()
         opt.step()
-        first = first if first is not None else float(loss)
-    assert float(loss) < first
+        first = first if first is not None else float(loss.detach())
+    assert float(loss.detach()) < first
 
 
 def test_text_all_padding_row_is_finite():
