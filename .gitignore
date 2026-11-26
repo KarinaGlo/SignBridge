@@ -84,3 +84,9 @@ Desktop.ini
 *~
 .vscode/
 .idea/
+
+# 9. SignBridge-XMF (rombak fusion) — data olahan & checkpoint tidak di-commit
+data/xmf/
+data/xmf_synth/
+outputs/xmf/_synth*/
+configs/xmf_synth_*.yaml
