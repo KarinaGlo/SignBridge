@@ -45,6 +45,18 @@ GLOSS_COLUMNS = [
 ALPHA_COLUMNS = ["sample_id", "task", "label", "letter", "group", "image_path", "split", "split_final"]
 
 
+def find_subdir(root: Path, name: str) -> Path:
+    """Cari subfolder tanpa peduli spasi/kapitalisasi (folder Drive tim bernama 'citra ' dengan spasi di akhir)."""
+    exact = root / name
+    if exact.is_dir():
+        return exact
+    if root.is_dir():
+        for p in root.iterdir():
+            if p.is_dir() and p.name.strip().lower() == name.lower():
+                return p
+    return exact
+
+
 def _rel(p: Path) -> str:
     try:
         return str(p.resolve().relative_to(ROOT))
@@ -92,7 +104,7 @@ def _group_bucket(group: str) -> int:
 # Gloss (video + citra)
 # ---------------------------------------------------------------------------
 def ingest_gloss(drive_root: Path, test_signer: int) -> Dict:
-    video_dir, citra_dir = drive_root / "video", drive_root / "citra"
+    video_dir, citra_dir = find_subdir(drive_root, "video"), find_subdir(drive_root, "citra")
     videos: Dict[str, Path] = {}
     for p in sorted(video_dir.rglob("*")) if video_dir.exists() else []:
         if p.suffix.lower() in VIDEO_EXT:
@@ -156,6 +168,7 @@ def ingest_gloss(drive_root: Path, test_signer: int) -> Dict:
             "image_source": dict(Counter(r["image_source"] for r in rows)),
             "per_signer": dict(sorted(Counter(f"signer{r['signer']}" for r in rows).items())),
             "per_gloss": {g: sum(1 for r in rows if r["gloss"] == g) for g in GLOSSES},
+            "citra_dir": str(citra_dir),
             "citra_folder_name_mismatch": mismatch,
             "note": "Label diambil dari nama file (labelN). Nama folder citra diabaikan.",
         },
@@ -166,7 +179,7 @@ def ingest_gloss(drive_root: Path, test_signer: int) -> Dict:
 # Alfabet (foto)
 # ---------------------------------------------------------------------------
 def ingest_alphabet(drive_root: Path) -> Dict:
-    adir = drive_root / "alfabet"
+    adir = find_subdir(drive_root, "alfabet")
     rows: List[Dict] = []
     for p in sorted(adir.rglob("*")) if adir.exists() else []:
         if p.suffix.lower() not in IMAGE_EXT:
