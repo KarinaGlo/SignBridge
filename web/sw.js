@@ -4,7 +4,7 @@
  * Menyimpan aset statis (HTML, CSS, JS) dan model ONNX di Cache Storage.
  */
 
-const CACHE_NAME = "signbridge-asean-v8";
+const CACHE_NAME = "signbridge-asean-v9-xmf";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -21,6 +21,7 @@ const CORE_ASSETS = [
   "./js/fingerspell.js",
   "./js/room.js",
   "./js/recorder.js",
+  "./js/xmf.js",
   "./js/app.js",
   "./model/labels.json",
   "./model/fingerspell.json",
