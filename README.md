@@ -2,6 +2,13 @@
 
 **SignBridge ASEAN** adalah sistem komunikasi dua arah empat modalitas (*Video*, *Citra*, *Suara*, dan *Teks*) yang dirancang untuk ruang kelas inklusif Indonesia–Filipina. Inferensi utama berjalan langsung di peramban (*browser-first*) menggunakan **MediaPipe Holistic (86 titik kanonis)** dan **ONNX Runtime Web (WebAssembly)** tanpa ketergantungan pada server GPU awan.
 
+> **Rombak multimodal (Nov 2026) — SignBridge-XMF.** Keempat modalitas kini masuk ke **satu** model
+> *Cross-Modal Attention Fusion Transformer* dan diproses bersama dalam satu pipeline (video & citra dari klip
+> WL-BISINDO yang sama). Lihat [`docs/XMF_PIPELINE.md`](docs/XMF_PIPELINE.md) dan jalankan
+> `bash scripts/run_xmf_pipeline.sh`.
+>
+> ![Pipeline SignBridge-XMF](docs/architecture/xmf_pipeline.png)
+
 ---
 
 ## Fitur Utama & 7 Kontrak Antarmuka Tim

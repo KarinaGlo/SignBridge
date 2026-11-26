@@ -1,0 +1,16 @@
+# requirements-xmf.txt — SignBridge-XMF (pipeline fusion 4 modalitas). Python 3.10–3.11 disarankan (MediaPipe).
+torch>=2.2
+torchvision>=0.17
+numpy>=1.26,<2.0
+pillow>=10
+pyyaml>=6
+matplotlib>=3.8
+opencv-python>=4.9
+mediapipe==0.10.11          # Holistic/Pose/Hands (API mp.solutions) — sama dengan perekam & browser
+onnx>=1.16
+onnxruntime>=1.18
+onnxscript
+# Bank audio (opsional, pilih yang tersedia). ffmpeg & espeak-ng dipasang lewat apt/brew/choco.
+edge-tts>=6.1
+gTTS>=2.5
+pytest>=8
