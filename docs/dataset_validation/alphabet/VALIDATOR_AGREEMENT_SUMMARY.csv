@@ -1,0 +1,23 @@
+metric,value,percentage,notes
+total_samples,36,100.00%,VAL-REV-001 through VAL-REV-036
+decision_agreement_count,17,47.22%,11 both IDENTIFIED + 6 both AMBIGUOUS
+decision_disagreement_count,19,52.78%,9 IDENTIFIED_VS_AMBIGUOUS + 8 IDENTIFIED_VS_UNDETERMINABLE + 2 AMBIGUOUS_VS_UNDETERMINABLE
+decision_cohens_kappa,0.109375,,"Po=0.472222, Pe=0.407407, 3 categories (IDENTIFIED/AMBIGUOUS/UNDETERMINABLE), N=36"
+raw_letter_match_all_36,26,72.22%,Includes 15 matches where >=1 validator chose AMBIGUOUS/UNDETERMINABLE
+raw_letter_mismatch_all_36,7,19.44%,Both validators gave non-empty differing letters
+raw_letter_one_missing_all_36,3,8.33%,"VAL-REV-019 (B), VAL-REV-027 (A), VAL-REV-033 (A)"
+both_identified_eligible_count,11,30.56%,Both validators selected IDENTIFIED
+both_identified_letter_match,11,100.00%,11/11 among BOTH IDENTIFIED (FULL_AGREEMENT)
+both_identified_letter_mismatch,0,0.00%,LETTER_DISAGREEMENT
+regional_variation_exact_match,29,80.56%,All 29 are NO vs NO
+regional_variation_mismatch,2,5.56%,VAL-REV-001 and VAL-REV-027 (UNSURE vs NO)
+regional_variation_one_empty,5,13.89%,Not equated to NO or UNSURE
+cat_FULL_AGREEMENT,11,30.56%,Provisional validator agreement; not yet expert-adjudicated
+cat_LETTER_DISAGREEMENT,0,0.00%,"Both IDENTIFIED, different letters"
+cat_IDENTIFIED_VS_AMBIGUOUS,9,25.00%,Requires expert adjudication
+cat_IDENTIFIED_VS_UNDETERMINABLE,8,22.22%,Requires expert adjudication
+cat_AMBIGUOUS_VS_UNDETERMINABLE,2,5.56%,Requires image review & adjudication
+cat_BOTH_AMBIGUOUS,6,16.67%,"Includes 2 letter mismatches (001, 007) and 4 matching ambiguous letters (002, 013, 034, 036)"
+cat_BOTH_UNDETERMINABLE,0,0.00%,
+disagreements_csv_count,21,58.33%,19 decision mismatches + 2 BOTH_AMBIGUOUS letter mismatches
+adjudication_required_count,25,69.44%,All 25 non-FULL_AGREEMENT samples

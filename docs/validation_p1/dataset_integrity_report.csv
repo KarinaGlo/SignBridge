@@ -1,0 +1,11 @@
+check_item,expected,actual,status,notes
+Total Physical Raw Images,4466,4466,PASS,4154 .jpg + 312 .jpeg di data/raw/image/bisindo_alphabet
+Total Processed Valid Images,4462,4462,PASS,4 citra ambigu B vs E dan D vs P dieksklusi sesuai audit Tahap 4
+Total Processed NPY Tensors,4462,4462,PASS,"Shape [224, 224, 3], uint8 [0..255]"
+Total Number of Classes,26,26,PASS,Alfabet A sampai Z lengkap
+Zero-Byte (Corrupted) Files,0,0,PASS,Semua file terbaca normal tanpa korupsi
+Train Split Count,3123,3123,PASS,Stratified seed 42 (70.00%)
+Validation Split Count,669,669,PASS,Stratified seed 42 (15.00%)
+Test Split Count,670,670,PASS,Stratified seed 42 (15.00%)
+Data Leakage (Train vs Test),0,0,PASS,"0 SHA-256 collision, 0 dHash collision"
+Subject-Level Annotation,Annotated,Unannotated,LIMITATION,Metadata Mendeley tidak menyertakan Subject ID relawan

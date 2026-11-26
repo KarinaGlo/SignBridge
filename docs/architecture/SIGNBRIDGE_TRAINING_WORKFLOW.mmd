@@ -1,0 +1,54 @@
+flowchart TD
+    subgraph DATA_HARVESTING["1. Dataset Sourcing & Cataloging"]
+        A1["WL-BISINDO Dataset (Raw MP4/AVI Videos)<br/>• Total: 1,600 video clips<br/>• 32 Vocabulary Classes (50 clips/class)<br/>• 5 Native Signers (SIGNER0..SIGNER4)"]
+        A2["data/manifest_wl_bisindo.csv<br/>• Manifest metadata tracking video path, gloss, signer_id, duration, split_sd"]
+        A1 --> A2
+    end
+
+    subgraph FEATURE_EXTRACTION["2. Mass Landmark Extraction Pipeline"]
+        A2 --> B1["signbridge/data/extract.py<br/>• MediaPipe Holistic Pipeline (CPU/GPU batch)"]
+        B1 --> B2["Frame-by-frame 543 Landmarks Detection"]
+        B2 --> B3["Extract 86 Canonical Nodes (signbridge/constants.py)"]
+        B3 --> B4["Spatial Normalization:<br/>Center = Shoulder Midpoint, Scale = Inter-shoulder Distance"]
+        B4 --> B5["data/keypoints/*.npz Artifacts<br/>• Shape: [T_raw, 86, 3] Float32<br/>(Git-ignored, generated locally)"]
+    end
+
+    subgraph SPLIT_STRATEGY["3. Train-Val-Test Partitioning Strategy"]
+        B5 --> C1{"Data Split Protocol"}
+        C1 -->|"Current Baseline (FLAWED)"| C2["Signer-Dependent Split (split_sd):<br/>• Train: 960 samples (60%)<br/>• Val: 180 samples (11.25%)<br/>• Test: 460 samples (28.75%)<br/>• Leakage: SIGNER0-4 mixed across all splits!"]
+        C1 -->|"Mandatory Target Protocol"| C3["Signer-Independent (LOSO / GroupKFold):<br/>• Train: Signers 1, 2, 3 (1,160 samples)<br/>• Val: Signer 0 (120 samples)<br/>• Test: Signer 4 (320 samples)<br/>• Zero signer overlap between Train & Test!"]
+    end
+
+    subgraph DATA_LOADER["4. Dataset Augmentation & PyTorch DataLoader"]
+        C2 --> D1["SignBridgeDataset (signbridge/data/dataset.py)"]
+        C3 --> D1
+        D1 --> D2["Temporal Resampling to T=64 frames (Linear/Spline Interpolation)"]
+        D2 --> D3["Data Augmentation (Optional/Planned):<br/>• Temporal Jittering & Speed perturbation<br/>• Random Spatial Scaling [0.9, 1.1]<br/>• Gaussian Coordinate Noise (sigma=0.01)<br/>• Joint Rotation (-10 to +10 deg)"]
+        D3 --> D4["Batched Tensors: [Batch, 64, 86, 3]"]
+    end
+
+    subgraph TRAINING_LOOP["5. Supervised Model Training Loop"]
+        D4 --> E1{"Model Architecture Selection"}
+        E1 -->|"M0 Student Transformer"| E2["signbridge/models/student_transformer.py<br/>• Linear Projection (258 -> 128)<br/>• Sinusoidal Positional Encoding<br/>• 2x TransformerEncoderLayer (heads=4, ffn=256)<br/>• Global Average Pooling + Linear(128, 32)<br/>• Params: 1,335,872"]
+        E1 -->|"M1 Spatial-Temporal GCN"| E3["signbridge/models/stgcn.py<br/>• 86-node Skeletal Adjacency Graph<br/>• 4x Spatial-Temporal Conv Blocks<br/>• Spatial Graph Conv + Temporal Conv (Kt=9)<br/>• Params: 1,481,248"]
+        
+        E2 --> E4["Loss Function & Optimization:<br/>• Cross-Entropy Loss with Label Smoothing (0.1)<br/>• AdamW Optimizer (lr=1e-3, weight_decay=1e-4)<br/>• ReduceLROnPlateau / CosineAnnealingLR<br/>• Batch Size: 16 / 32, Max Epochs: 60-100"]
+        E3 --> E4
+        E4 --> E5["Validation Loop per Epoch:<br/>• Accuracy, Macro F1-Score, Top-3 Accuracy<br/>• Early Stopping (patience=10 on val_loss)"]
+    end
+
+    subgraph CHECKPOINTING["6. Model Evaluation & Artifact Persistence"]
+        E5 --> F1["Checkpoint Saver:<br/>• Best model weights: outputs/experiments/M0_*/best.pt<br/>• Training logs: metrics.json, config.yaml, confusion_matrix.png"]
+        F1 --> F2["Comprehensive Test Set Evaluation:<br/>• Evaluate best.pt on Test Partition<br/>• Compute Confusion Matrix & Per-Class Recall"]
+    end
+
+    subgraph ONNX_EXPORT["7. Model Export, Quantization & Web Deployment Contract"]
+        F2 --> G1["signbridge/export/onnx_exporter.py<br/>• Dynamic Batch Size: [-1, 64, 86, 3]<br/>• Target Opsets: Opset 14/17<br/>• Export to web/model/student.onnx (5.46 MB)"]
+        G1 --> G2["Parity Verification Suite (tests/test_contract_2_model_io.py):<br/>• Check max absolute difference: ||PyTorch(x) - ONNX(x)||_inf < 1e-4<br/>• Verify 32 output class alignment with web/model/labels.json"]
+        G2 --> G3{"Quantization Step"}
+        G3 -->|"Actual FP32"| G4["Production Model: web/model/student.onnx (5.46 MB)"]
+        G3 -->|"Intended INT8 Dynamic"| G5["Dynamic Quantization (onnxruntime.quantization):<br/>(Target ~1.4 MB - Currently duplicate FP32)"]
+        G4 --> G6["Web Application Deployment (web/index.html & recognizer.js)"]
+        G5 --> G6
+    end
+

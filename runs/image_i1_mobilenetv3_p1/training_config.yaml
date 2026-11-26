@@ -1,0 +1,30 @@
+data:
+  audit_manifest: data/processed/bisindo_alphabet/preprocessing_audit_manifest.csv
+  image_size: 224
+  manifest: data/processed/bisindo_alphabet/manifest.csv
+  num_classes: 26
+experiment_id: image_i1_mobilenetv3_p1
+model:
+  arch: mobilenet_v3_small_pretrained
+  dropout: 0.2
+  num_classes: 26
+  pretrained: true
+output_dir: runs/image_i1_mobilenetv3_p1
+seed: 42
+training:
+  stage1:
+    batch_size: 32
+    epochs: 5
+    label_smoothing: 0.05
+    lr: 0.001
+    weight_decay: 0.0001
+  stage2:
+    backbone_lr: 1.0e-05
+    batch_size: 32
+    epochs: 15
+    head_lr: 0.0001
+    label_smoothing: 0.05
+    min_lr: 1.0e-06
+    patience: 5
+    unfreeze_from_layer: 9
+    weight_decay: 0.0001

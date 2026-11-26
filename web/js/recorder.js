@@ -11,6 +11,37 @@
  */
 
 import { computeHandCropBox } from "./handcrop.js";
+import { BISINDO_GLOSSES, FINGERSPELL_LABELS } from "./config.js";
+
+function nowMs() {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+export function classifyMicrophoneError(err) {
+  const name = err?.name || "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "SecurityError") {
+    return {
+      status: "missing",
+      reason: "permission_denied",
+      message: "Izin mikrofon ditolak. Klip tetap direkam tanpa audio; aktifkan izin mikrofon browser lalu coba rekam ulang."
+    };
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return {
+      status: "missing",
+      reason: "device_not_found",
+      message: "Perangkat mikrofon tidak ditemukan. Klip tetap direkam tanpa audio; sambungkan mikrofon lalu coba lagi."
+    };
+  }
+  return {
+    status: "missing",
+    reason: "capture_error",
+    message: `Gagal mengakses mikrofon (${err?.message || "kesalahan perangkat"}). Klip direkam tanpa audio.`
+  };
+}
 
 function crc32(bytes) {
   let c = -1;
@@ -198,7 +229,10 @@ export class MultimodalCapture {
   constructor({ videoEl } = {}) {
     this.videoEl = videoEl;
     this.active = false;
+    this.recordingStartMs = null;
+    this.audioStartMs = null;
     this.frames = [];
+    this.frameRecords = [];
     this.bestHand = null; // { hand21, handCount, frameIdx }
     this.handSnapshot = null;
     this.portraitSnapshot = null;
@@ -206,17 +240,39 @@ export class MultimodalCapture {
 
   pushFrame(kp86, rightHand21, leftHand21) {
     if (!this.active || !kp86) return;
-    this.frames.push(kp86.map((p) => [p[0] || 0, p[1] || 0, p[2] || 0]));
+    const tNow = nowMs();
+    if (this.recordingStartMs === null) {
+      this.recordingStartMs = tNow;
+    }
+    const timestampMs = Math.max(0, Math.round((tNow - this.recordingStartMs) * 100) / 100);
+    const kpCopy = kp86.map((p) => [p[0] || 0, p[1] || 0, p[2] || 0]);
+    const frameIndex = this.frames.length;
+    this.frames.push(kpCopy);
+
+    const rCount = rightHand21 ? rightHand21.filter((p) => p && Math.abs(p.x ?? p[0]) > 1e-5).length : 0;
+    const lCount = leftHand21 ? leftHand21.filter((p) => p && Math.abs(p.x ?? p[0]) > 1e-5).length : 0;
+    const validHand = rCount > 0 || lCount > 0;
+    this.frameRecords.push({
+      frame_index: frameIndex,
+      timestamp_ms: timestampMs,
+      valid_hand: validHand,
+      keypoints: kpCopy
+    });
+
     const hand = rightHand21 && rightHand21.length ? rightHand21 : leftHand21;
     const count = hand ? hand.filter((p) => p && (Math.abs(p.x ?? p[0]) > 1e-5)).length : 0;
     if (count > 0 && (!this.bestHand || count >= this.bestHand.handCount)) {
-      this.bestHand = { hand21: hand, handCount: count, frameIdx: this.frames.length - 1 };
+      this.bestHand = { hand21: hand, handCount: count, frameIdx: frameIndex };
       this._snapshot(hand);
     }
   }
 
   _snapshot(hand21) {
-    const v = this.videoEl;
+    const v = (this.videoEl && this.videoEl.videoWidth)
+      ? this.videoEl
+      : (typeof document !== "undefined"
+          ? (document.getElementById("rec-camera-video") || document.getElementById("camera-video"))
+          : null);
     if (!v || !v.videoWidth || typeof document === "undefined") return;
     const W = v.videoWidth;
     const H = v.videoHeight;
@@ -242,6 +298,9 @@ export class MultimodalCapture {
    */
   async capture(durationMs = 2500) {
     this.frames = [];
+    this.frameRecords = [];
+    this.recordingStartMs = null;
+    this.audioStartMs = null;
     this.bestHand = null;
     this.handSnapshot = null;
     this.portraitSnapshot = null;
@@ -249,6 +308,10 @@ export class MultimodalCapture {
     let stream = null;
     let ctx = null;
     let node = null;
+    let muteGain = null;
+    let audioStatus = "recorded";
+    let audioReason = null;
+    let audioErrorMessage = null;
     const chunks = [];
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true } });
@@ -257,14 +320,29 @@ export class MultimodalCapture {
       const src = ctx.createMediaStreamSource(stream);
       node = ctx.createScriptProcessor(4096, 1, 1);
       node.onaudioprocess = (e) => {
-        if (this.active) chunks.push(Float32Array.from(e.inputBuffer.getChannelData(0)));
+        if (this.active) {
+          if (this.audioStartMs === null) {
+            this.audioStartMs = Math.max(0, Math.round((nowMs() - (this.recordingStartMs ?? nowMs())) * 100) / 100);
+          }
+          chunks.push(Float32Array.from(e.inputBuffer.getChannelData(0)));
+        }
       };
+      // Loopback audio dicegah dengan GainNode berbobot 0:
+      // ScriptProcessorNode tetap aktif di peramban tanpa mengeluarkan suara ke speaker.
+      muteGain = ctx.createGain();
+      muteGain.gain.value = 0;
       src.connect(node);
-      node.connect(ctx.destination);
-    } catch (_e) {
-      // Mikrofon ditolak/tidak ada: klip tetap disimpan tanpa audio (modalitas audio = hilang)
+      node.connect(muteGain);
+      muteGain.connect(ctx.destination);
+    } catch (err) {
+      // Mikrofon ditolak/tidak ada: kamera tetap jalan, audio ditandai missing dengan alasan jelas (tanpa audio palsu)
+      const info = classifyMicrophoneError(err);
+      audioStatus = info.status;
+      audioReason = info.reason;
+      audioErrorMessage = info.message;
     }
 
+    this.recordingStartMs = nowMs();
     this.active = true;
     await new Promise((r) => setTimeout(r, durationMs));
     this.active = false;
@@ -281,9 +359,16 @@ export class MultimodalCapture {
       }
       const pcm16k = resampleLinear(pcm, ctx.sampleRate, TARGET_SAMPLE_RATE);
       audioSeconds = pcm16k.length / TARGET_SAMPLE_RATE;
-      if (pcm16k.length > 0) wav = encodeWavPCM16(pcm16k, TARGET_SAMPLE_RATE);
+      if (pcm16k.length > 0) {
+        wav = encodeWavPCM16(pcm16k, TARGET_SAMPLE_RATE);
+      } else if (audioStatus === "recorded") {
+        audioStatus = "missing";
+        audioReason = "empty_audio_stream";
+        audioErrorMessage = "Tidak ada sampel audio yang terekam dari mikrofon. Klip disimpan tanpa audio.";
+      }
       try {
         node.disconnect();
+        if (muteGain) muteGain.disconnect();
         await ctx.close();
       } catch (_e) {}
     }
@@ -291,7 +376,19 @@ export class MultimodalCapture {
 
     const handJpg = this.handSnapshot ? await canvasToJpegBytes(this.handSnapshot) : null;
     const portraitJpg = this.portraitSnapshot ? await canvasToJpegBytes(this.portraitSnapshot, 0.85) : null;
-    return { keypoints: this.frames, wav, handJpg, portraitJpg, numFrames: this.frames.length, audioSeconds };
+    return {
+      keypoints: this.frames,
+      frameRecords: this.frameRecords,
+      audioStartOffsetMs: this.audioStartMs,
+      wav,
+      audioStatus: wav ? "recorded" : audioStatus,
+      audioReason: wav ? null : audioReason,
+      audioErrorMessage: wav ? null : audioErrorMessage,
+      handJpg,
+      portraitJpg,
+      numFrames: this.frames.length,
+      audioSeconds
+    };
   }
 }
 
@@ -309,24 +406,65 @@ export class MultimodalRecorder {
   addClip({
     signer = "S01",
     category = "gloss",
-    target = "HALO",
+    target = "",
     label = -1,
     keypoints = [],
+    frameRecords = null,
+    audioStartOffsetMs = null,
+    audioStatus = null,
+    audioReason = null,
     sentence = "",
     wav = null,
     handJpg = null,
     portraitJpg = null
   } = {}) {
+    const cleanTarget = String(target || "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+    if (!cleanTarget) {
+      throw new Error("Target gloss atau huruf wajib dipilih sebelum menyimpan klip.");
+    }
+    let resolvedLabel = label;
+    if (category === "gloss") {
+      const idx = BISINDO_GLOSSES.indexOf(cleanTarget);
+      if (idx === -1) {
+        throw new Error(`Gloss '${cleanTarget}' tidak terdaftar pada Dictionary B (BISINDO_32_GLOSSES).`);
+      }
+      if (resolvedLabel !== -1 && resolvedLabel !== idx) {
+        throw new Error(`Label ${resolvedLabel} tidak cocok dengan indeks Dictionary B untuk '${cleanTarget}' (${idx}).`);
+      }
+      resolvedLabel = idx;
+    } else if (category === "letter") {
+      const idx = FINGERSPELL_LABELS.indexOf(cleanTarget);
+      if (idx === -1) {
+        throw new Error(`Huruf '${cleanTarget}' tidak valid untuk kategori ejaan jari (A-Z).`);
+      }
+      if (resolvedLabel !== -1 && resolvedLabel !== idx) {
+        throw new Error(`Label ${resolvedLabel} tidak cocok dengan indeks huruf '${cleanTarget}' (${idx}).`);
+      }
+      resolvedLabel = idx;
+    } else {
+      throw new Error(`Kategori '${category}' tidak didukung.`);
+    }
+
     const take = String(this.clips.length + 1).padStart(2, "0");
+    const cleanSigner = String(signer || "S01").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const clipId = `SB_${cleanSigner}_${cleanTarget}_T${take}`;
+    const normalizedFrames = Array.isArray(frameRecords) && frameRecords.length === keypoints.length
+      ? frameRecords
+      : null;
     const clip = {
-      clipId: `${signer}_${category}_${target}_take${take}`,
+      clipId,
+      sampleId: clipId,
       signer,
       category,
-      target,
-      label,
+      target: cleanTarget,
+      label: resolvedLabel,
       take: Number(take),
       numFrames: keypoints.length,
       keypoints,
+      frameRecords: normalizedFrames,
+      audioStartOffsetMs,
+      audioStatus: wav ? "recorded" : (audioStatus || "missing"),
+      audioReason: wav ? null : (audioReason || "not_provided"),
       sentence: sentence || "",
       wav,
       handJpg,
@@ -364,31 +502,50 @@ export class MultimodalRecorder {
       const portraitPath = c.portraitJpg ? `${base}_portrait.jpg` : "";
       const audioPath = c.wav ? `${base}.wav` : "";
       if (kpPath) {
+        const kpPayload = {
+          clip_id: c.clipId,
+          sample_id: c.sampleId || c.clipId,
+          signer: c.signer,
+          category: c.category,
+          target: c.target,
+          sentence: c.sentence,
+          keypoints: c.keypoints
+        };
+        if (c.frameRecords) {
+          kpPayload.frame_records = c.frameRecords;
+        }
         files.push({
           name: kpPath,
-          data: JSON.stringify({
-            clip_id: c.clipId,
-            signer: c.signer,
-            category: c.category,
-            target: c.target,
-            sentence: c.sentence,
-            keypoints: c.keypoints
-          })
+          data: JSON.stringify(kpPayload)
         });
       }
       if (handPath) files.push({ name: handPath, data: c.handJpg });
       if (portraitPath) files.push({ name: portraitPath, data: c.portraitJpg });
       if (audioPath) files.push({ name: audioPath, data: c.wav });
+      const metaPayload = {
+        clip_id: c.clipId,
+        sample_id: c.sampleId || c.clipId,
+        created_at: c.createdAt,
+        num_frames: c.numFrames,
+        label: c.label,
+        text: c.sentence,
+        audio_status: c.audioStatus,
+        audio_missing_reason: c.audioReason,
+        modalities: { video: !!kpPath, image: !!handPath, audio: !!audioPath, text: !!c.sentence.trim() }
+      };
+      if (c.frameRecords) {
+        metaPayload.frame_timestamps_ms = c.frameRecords.map((fr) => ({
+          frame_index: fr.frame_index,
+          timestamp_ms: fr.timestamp_ms,
+          valid_hand: fr.valid_hand
+        }));
+      }
+      if (c.audioStartOffsetMs !== null && c.audioStartOffsetMs !== undefined) {
+        metaPayload.audio_start_offset_ms = c.audioStartOffsetMs;
+      }
       files.push({
         name: `${base}_meta.json`,
-        data: JSON.stringify({
-          clip_id: c.clipId,
-          created_at: c.createdAt,
-          num_frames: c.numFrames,
-          label: c.label,
-          text: c.sentence,
-          modalities: { video: !!kpPath, image: !!handPath, audio: !!audioPath, text: !!c.sentence.trim() }
-        })
+        data: JSON.stringify(metaPayload)
       });
       rows.push(
         [c.clipId, c.signer, c.category, c.target, c.label, c.take, kpPath, handPath, portraitPath, audioPath, c.sentence]

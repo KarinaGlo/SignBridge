@@ -1,0 +1,39 @@
+# configs/image_i1_mobilenetv3_p1.yaml — SignBridge P1: Transfer Learning MobileNetV3-Small Pretrained ImageNet
+experiment_id: "image_i1_mobilenetv3_p1"
+seed: 42
+
+data:
+  manifest: "data/processed/bisindo_alphabet/manifest.csv"
+  audit_manifest: "data/processed/bisindo_alphabet/preprocessing_audit_manifest.csv"
+  num_classes: 26
+  image_size: 224
+
+model:
+  arch: "mobilenet_v3_small_pretrained"
+  pretrained: true
+  num_classes: 26
+  dropout: 0.2
+
+training:
+  # Tahap 1: Feature Extraction (Freeze backbone, latih classifier head)
+  stage1:
+    epochs: 5
+    batch_size: 32
+    lr: 0.001
+    weight_decay: 0.0001
+    label_smoothing: 0.05
+
+  # Tahap 2: Fine-Tuning (Unfreeze features[9:] dengan differential learning rates)
+  stage2:
+    epochs: 15
+    batch_size: 32
+    backbone_lr: 0.00001
+    head_lr: 0.0001
+    weight_decay: 0.0001
+    label_smoothing: 0.05
+    min_lr: 0.000001
+    unfreeze_from_layer: 9
+    patience: 5
+
+output_dir: "runs/image_i1_mobilenetv3_p1"
+

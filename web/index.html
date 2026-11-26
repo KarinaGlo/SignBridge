@@ -1109,6 +1109,16 @@
                   <span class="state-pill">Klip Terekam: <strong id="rec-clip-count" style="margin-left:4px;">0</strong></span>
                 </div>
 
+                <!-- Preview Kamera Langsung & Kerangka Pose -->
+                <div class="rec-preview-box">
+                  <video id="rec-camera-video" playsinline muted></video>
+                  <canvas id="rec-camera-preview" width="640" height="480"></canvas>
+                  <div class="rec-preview-overlay">
+                    <span id="rec-cam-indicator" class="status-indicator"></span>
+                    <span id="rec-cam-text">Kamera Siap</span>
+                  </div>
+                </div>
+
                 <div class="card">
                   <p style="color:var(--text-secondary); margin-bottom:1.5rem; font-size:0.92rem;">
                     Setiap klip 2,5 detik merekam dari kamera &amp; mikrofon secara bersamaan: deret keypoint 86 titik (video), crop tangan 224x224 &amp; portrait (citra), suara 16 kHz WAV (audio), dan kalimat konteks di bawah (teks). Paket <code>.zip</code> diolah oleh <code>scripts/build_multimodal_manifest.py</code>. Peragakan isyarat sambil mengucapkan kalimatnya.
@@ -1120,6 +1130,7 @@
                         <option value="S02">S02 (Jonnathan)</option>
                         <option value="S03">S03 (Gloria)</option>
                         <option value="S04">S04 (Mitra 1)</option>
+                        <option value="S05">S05 (Expert BISINDO)</option>
                       </select>
                     </label>
                     <label style="font-size:0.85rem; font-weight:600;">Kategori:
@@ -1131,13 +1142,20 @@
                     <label style="font-size:0.85rem; font-weight:600;">Target:
                       <select id="rec-target" style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem;"></select>
                     </label>
-                    <label style="font-size:0.85rem; font-weight:600; flex:1 1 260px;">Kalimat (teks):
-                      <input id="rec-sentence" type="text" maxlength="64" placeholder="mis. Saya mau makan." style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem; width:70%;">
-                    </label>
-                    <button id="btn-record-clip" type="button" class="btn btn-primary btn-sm">Rekam Klip (2.5 dtk)</button>
-                    <button id="btn-export-zip" type="button" class="btn btn-outline btn-sm">Unduh Paket Dataset (.zip)</button>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; flex:1 1 320px;">
+                      <label style="font-size:0.85rem; font-weight:600; flex:1 1 200px;">Kalimat Konteks (Teks):
+                        <input id="rec-sentence" type="text" maxlength="64" placeholder="Konteks dialog kelas..." style="padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); margin-left:0.35rem; width:calc(100% - 150px);">
+                      </label>
+                      <button id="btn-suggest-prompt" type="button" class="btn btn-outline btn-sm" title="Gunakan contoh dialog kelas alami tanpa bocoran label">Saran Konteks</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                      <button id="btn-toggle-rec-cam" type="button" class="btn btn-outline btn-sm">Nyalakan Kamera</button>
+                      <button id="btn-record-clip" type="button" class="btn btn-primary btn-sm">Rekam Klip (2.5 dtk)</button>
+                      <button id="btn-export-zip" type="button" class="btn btn-outline btn-sm">Unduh Paket Dataset (.zip)</button>
+                    </div>
                   </div>
-                  <p id="rec-status" role="status" aria-live="polite" style="margin-top:1rem; font-size:0.85rem; color:var(--text-secondary);">Kamera akan dinyalakan otomatis saat merekam.</p>
+                  <div class="rec-preview-prompt-hint">Catatan: Teks konteks diisi dialog kelas inklusif dan tidak otomatis menyalin nama label target guna mencegah jalan pintas teks (shortcut leakage).</div>
+                  <p id="rec-status" role="status" aria-live="polite" style="margin-top:1rem; font-size:0.85rem; color:var(--text-secondary);">Kamera dapat dinyalakan terlebih dahulu untuk memastikan posisi framing isyarat.</p>
                 </div>
               </div>
             </section>

@@ -1,0 +1,99 @@
+flowchart TD
+    %% =========================================================================
+    %% SIGNBRIDGE ASEAN: HIGH-LEVEL ACTUAL SYSTEM ARCHITECTURE
+    %% Based on verified codebase inspection of frontend, backend, and models
+    %% =========================================================================
+
+    subgraph USERS["Pengguna / Ruang Kelas Inklusif"]
+        U_DEAF["Siswa Tuli / Signer (Peraga BISINDO)"]
+        U_HEAR["Siswa / Guru Dengar (Penerima & Pembicara)"]
+    end
+
+    subgraph CLIENT["Frontend / PWA Client (Vanilla JS + CSS3 + HTML5)"]
+        subgraph INPUTS["Input Modalitas Pengguna"]
+            CAM_IN["Kamera Webcam (Video Feed)"]
+            MIC_IN["Mikrofon (Audio Feed)"]
+        end
+
+        subgraph INFERENCE_ENGINES["Mesin Inferensi Lokal Peramban (Edge Execution)"]
+            MP_HOLISTIC["MediaPipe Holistic WASM/WebGL<br/>(Ekstraksi 86 Landmark: Badan, Tangan, Wajah)"]
+            
+            subgraph VIDEO_RECOGNITION["1. Pengenalan Isyarat Video (Kata 32 WL-BISINDO)"]
+                PREPROC_JS["features.js (7 Kontrak Paritas Numerik)<br/>Trim -> Normalisasi Bahu -> Resample 64 frame"]
+                M0_ONNX["web/model/student.onnx (5.46 MB FP32)<br/>ONNX Runtime Web (WASM Execution Provider)<br/>Input: [1, 64, 86, 3] -> Output: [1, 32] Logits"]
+                TWO_TIER["Two-Tier Thresholding<br/>Candidate >= 0.25 | Auto-Speak >= 0.50 & Margin >= 0.10"]
+            end
+
+            subgraph IMAGE_FINGERSPELL["2. Ejaan Jari Alfabet A-Z (Fingerspelling)"]
+                GEOM_RULES["classifyAlphabetGeometry (fingerspell.js)<br/>Heuristik Geometris Landmark 21 Titik Tangan<br/>(Bukan Neural Network - Rule-Based 100%)"]
+            end
+
+            subgraph AUDIO_STT["3. Pengenalan Suara (Speech-to-Text)"]
+                WEB_SPEECH["Browser Web Speech API<br/>(webkitSpeechRecognition / SpeechRecognition)<br/>Native Engine Peramban (Bukan Whisper Lokal)"]
+            end
+        end
+
+        subgraph TEXT_PIPELINE["Pemrosesan Teks & Kalimat (Gloss-to-Sentence)"]
+            B0_RULES["sentence.js: glossToSentenceLocal (Aturan B0)<br/>Kamus Pemetaan Gloss + Tabel Afiks + Template Kalimat<br/>(Bukan Model Neural IndoT5 / mT5)"]
+            CIRCUIT_BREAKER["Circuit-Breaker Pattern<br/>(Deteksi Otomatis Ketersediaan Backend Server)"]
+        end
+
+        subgraph OUTPUTS["Keluaran Multimodal (User Feedback)"]
+            UI_SUBTITLE["Takarir Teks Dinamis (Bahasa Indonesia)"]
+            UI_CANDIDATE["Tombol Interaktif Top-3 Kandidat Gloss"]
+            AUDIO_TTS["Web Speech Synthesis (TTS Suara Alami)<br/>+ Web Audio Chime Konfirmasi"]
+            UI_HUD["HUD Telemetri Debug (?debug=1)<br/>FPS, State, Signing Space, Hand Occ, Top-5"]
+        end
+    end
+
+    subgraph BACKEND_SERVER["Backend Layanan & API (FastAPI / Python 3.13)"]
+        FASTAPI["server/app.py (FastAPI Application :7860/:8080)"]
+        API_PREDICT["POST /predict (Inferensi Video Alternatif Server)"]
+        API_SENTENCE["POST /sentence (Konstruksi Kalimat B0 Server)"]
+        API_HEALTH["GET /health (Pemeriksaan Kesiapan Layanan)"]
+        API_ROOM["POST /room/create & /room/join (Kolaborasi Sesi Kelas)"]
+        DB_DRIVER["server/database.py (SQLAlchemy 2.0 ORM)"]
+    end
+
+    subgraph PERSISTENCE["Penyimpanan & Basis Data"]
+        POSTGRES["PostgreSQL 16 Alpine (Port 5432 - Docker)<br/>Tabel: sign_concepts, model_versions, evaluation_runs,<br/>inference_logs, dataset_recordings"]
+        SQLITE_FALLBACK["Fallback: data/signbridge_operational.db (SQLite)"]
+    end
+
+    %% Data Flow Connections
+    U_DEAF -->|Gerakan Isyarat Tangan & Tubuh| CAM_IN
+    U_HEAR -->|Ucapan Suara Guru| MIC_IN
+
+    CAM_IN --> MP_HOLISTIC
+    MP_HOLISTIC -->|Sekuens 86 Titik| PREPROC_JS
+    MP_HOLISTIC -->|Landmark 21 Titik Tangan| GEOM_RULES
+    MIC_IN --> WEB_SPEECH
+
+    PREPROC_JS -->|Tensor Float32 [1,64,86,3]| M0_ONNX
+    M0_ONNX --> TWO_TIER
+    TWO_TIER -->|Gloss Terpilih / Konfirmasi| B0_RULES
+    GEOM_RULES -->|Huruf A-Z Terdeteksi| B0_RULES
+    WEB_SPEECH -->|Teks Transkripsi Suara| B0_RULES
+
+    B0_RULES <-->|Fallback / Retry| CIRCUIT_BREAKER
+    CIRCUIT_BREAKER -.->|HTTP POST jika Server Aktif| API_SENTENCE
+    API_SENTENCE --> DB_DRIVER
+
+    B0_RULES --> UI_SUBTITLE
+    TWO_TIER --> UI_CANDIDATE
+    TWO_TIER --> AUDIO_TTS
+    B0_RULES --> AUDIO_TTS
+    INFERENCE_ENGINES --> UI_HUD
+
+    UI_SUBTITLE --> U_HEAR
+    AUDIO_TTS --> U_HEAR
+    UI_SUBTITLE --> U_DEAF
+
+    FASTAPI --> API_PREDICT
+    FASTAPI --> API_SENTENCE
+    FASTAPI --> API_HEALTH
+    FASTAPI --> API_ROOM
+    API_PREDICT --> DB_DRIVER
+    DB_DRIVER --> POSTGRES
+    DB_DRIVER -.->|Graceful Fallback| SQLITE_FALLBACK
+

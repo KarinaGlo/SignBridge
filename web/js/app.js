@@ -11,7 +11,8 @@ import {
   FINGERSPELL_LABELS,
   FINGERSPELL_DB,
   CLASSROOM_CONCEPTS,
-  PHONOLOGY_DB
+  PHONOLOGY_DB,
+  CLASSROOM_CONTEXT_PROMPTS
 } from "./config.js";
 import { buildNaturalSentence, glossToSentenceLocal, sentenceToConceptGlosses } from "./sentence.js";
 import { speakText, unlockSpeechAudio, SpeechListener } from "./speech.js";
@@ -204,6 +205,35 @@ class SignBridgeApp {
       p.classList.toggle("active", p.id === tabId);
     });
 
+    // Sinkronisasi status kamera pada panel perekam
+    // Sinkronisasi status kamera & isolasi audio pada panel perekam
+    if (tabId === "panel-recorder") {
+      // Hentikan segera output ucapan TTS yang sedang berjalan agar mikrofon tetap hening
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (this.recognizer?.activeBuffer) {
+        this.recognizer.activeBuffer = [];
+      }
+      const isRunning = Boolean(this.vision?.running);
+      if (isRunning) {
+        this.syncRecorderCameraStream();
+      }
+      const camInd = document.getElementById("rec-cam-indicator");
+      const camTxt = document.getElementById("rec-cam-text");
+      const toggleCamBtn = document.getElementById("btn-toggle-rec-cam");
+      if (camInd) camInd.classList.toggle("active", isRunning);
+      if (camTxt) camTxt.textContent = isRunning ? "Kamera Aktif" : "Kamera Siap";
+      if (toggleCamBtn) toggleCamBtn.textContent = isRunning ? "Matikan Kamera" : "Nyalakan Kamera";
+    } else {
+      // Saat meninggalkan panel perekam, bersihkan kanvas skeleton
+      const recCanvas = document.getElementById("rec-camera-preview");
+      if (recCanvas) {
+        const ctx = recCanvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, recCanvas.width, recCanvas.height);
+      }
+    }
+
     // Perbarui breadcrumb
     const breadcrumbEl = document.getElementById("breadcrumb-current-view");
     if (breadcrumbEl) {
@@ -232,6 +262,28 @@ class SignBridgeApp {
     const backdrop = document.getElementById("sidebar-backdrop");
     if (sidebar) sidebar.classList.remove("open");
     if (backdrop) backdrop.classList.remove("active");
+  }
+
+  syncRecorderCameraStream() {
+    const recVideo = document.getElementById("rec-camera-video");
+    if (recVideo && this.vision?.stream) {
+      if (recVideo.srcObject !== this.vision.stream) {
+        recVideo.srcObject = this.vision.stream;
+      }
+      recVideo.play().catch(() => {});
+    }
+  }
+
+  detachRecorderCameraStream() {
+    const recVideo = document.getElementById("rec-camera-video");
+    if (recVideo) {
+      recVideo.srcObject = null;
+    }
+    const recCanvas = document.getElementById("rec-camera-preview");
+    if (recCanvas) {
+      const ctx = recCanvas.getContext("2d");
+      if (ctx) ctx.clearRect(0, 0, recCanvas.width, recCanvas.height);
+    }
   }
 
   /* ==========================================================================
@@ -325,6 +377,21 @@ class SignBridgeApp {
           });
         }
 
+        // Visualisasikan overlay kerangka pose MediaPipe pada kanvas di atas video perekam
+        if (this.currentAppTab === "panel-recorder") {
+          const recCanvas = document.getElementById("rec-camera-preview");
+          if (recCanvas) {
+            const rCtx = recCanvas.getContext("2d");
+            if (rCtx) {
+              if (kp86) {
+                drawSkeleton86(rCtx, kp86, recCanvas.width, recCanvas.height, { mirror: true, clear: true });
+              } else {
+                rCtx.clearRect(0, 0, recCanvas.width, recCanvas.height);
+              }
+            }
+          }
+        }
+
         const activeHand = rightHand21 || leftHand21;
         if (this.recognitionMode === "fingerspell") {
           this.fingerspeller.pushHandFrame(activeHand);
@@ -334,11 +401,27 @@ class SignBridgeApp {
           // Mode HIBRID (Default):
           // 1. Eksekusi pengenal isyarat kata (BISINDO dinamis)
           this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
+        // Evaluasi Pengenalan Isyarat & Ejaan Jari (HANYA AKTIF di luar panel perekam dataset)
+        if (this.currentAppTab !== "panel-recorder") {
+          const activeHand = rightHand21 || leftHand21;
+          if (this.recognitionMode === "fingerspell") {
+            this.fingerspeller.pushHandFrame(activeHand);
+          } else if (this.recognitionMode === "video") {
+            this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
+          } else {
+            // Mode HIBRID (Default):
+            // 1. Eksekusi pengenal isyarat kata (BISINDO dinamis)
+            this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
 
           // 2. Jika pengenal kata sedang IDLE dan ada satu tangan terangkat di ruang isyarat,
           //    evaluasi ejaan abjad jari 26 huruf (A-Z)
           if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) {
             this.fingerspeller.pushHandFrame(activeHand);
+            // 2. Jika pengenal kata sedang IDLE dan ada satu tangan terangkat di ruang isyarat,
+            //    evaluasi ejaan abjad jari 26 huruf (A-Z)
+            if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) {
+              this.fingerspeller.pushHandFrame(activeHand);
+            }
           }
         }
       }
@@ -600,6 +683,7 @@ class SignBridgeApp {
   }
 
   speakCurrentSentence(overrideText = "") {
+    if (this.currentAppTab === "panel-recorder") return;
     const srcLang = this.bridgeDirection === "ID-PH" ? "id" : "fil";
     const text = overrideText || this.currentSentence || glossToSentenceLocal(this.accumulatedGlosses, srcLang);
     if (!text) return;
@@ -677,6 +761,7 @@ class SignBridgeApp {
   }
 
   handleAlphabetPrediction(pred) {
+    if (this.currentAppTab === "panel-recorder") return;
     if (!pred || !pred.letter) return;
     const letter = String(pred.letter).toUpperCase();
     this.spelledLetters.push(letter);
@@ -709,6 +794,7 @@ class SignBridgeApp {
   }
 
   async handleSignPrediction(pred) {
+    if (this.currentAppTab === "panel-recorder") return;
     const top3El = document.getElementById("top3-predictions");
     if (top3El && pred && Array.isArray(pred.top3) && pred.top3.length > 0) {
       const autoConf = APP_CONFIG.autoSpeakConfidenceThreshold || 0.50;
@@ -1018,7 +1104,8 @@ class SignBridgeApp {
     const populateTargets = () => {
       if (!catSelect || !targetSelect) return;
       const list = catSelect.value === "letter" ? FINGERSPELL_LABELS : BISINDO_GLOSSES;
-      targetSelect.innerHTML = list.map((item) => `<option value="${item}">${item}</option>`).join("");
+      const placeholder = '<option value="">-- Pilih Target --</option>';
+      targetSelect.innerHTML = placeholder + list.map((item) => `<option value="${item}">${item}</option>`).join("");
     };
     if (catSelect) {
       catSelect.addEventListener("change", populateTargets);
@@ -1040,9 +1127,56 @@ class SignBridgeApp {
         `Klip: ${s.clips} · lengkap 4 modalitas: ${s.complete} · video ${s.video} · citra ${s.image} · audio ${s.audio} · teks ${s.text}`
       );
     };
-    if (targetSelect && sentenceEl) {
-      targetSelect.addEventListener("change", () => {
-        sentenceEl.value = glossToSentenceLocal([targetSelect.value], "id");
+    // Tombol Saran Konteks Dialog Kelas (Tanpa Kebocoran Label Target)
+    const suggestBtn = document.getElementById("btn-suggest-prompt");
+    if (suggestBtn && sentenceEl && targetSelect) {
+      suggestBtn.addEventListener("click", () => {
+        const cat = catSelect?.value || "gloss";
+        const target = (targetSelect.value || "").trim();
+        if (!target) {
+          setStatus("Pilih target gloss atau huruf terlebih dahulu sebelum meminta saran konteks.");
+          return;
+        }
+        if (cat === "gloss" && CLASSROOM_CONTEXT_PROMPTS[target]) {
+          sentenceEl.value = CLASSROOM_CONTEXT_PROMPTS[target];
+          setStatus(`Konteks kelas disarankan untuk ${target} (tanpa kebocoran label).`);
+        } else if (cat === "letter") {
+          sentenceEl.value = `Mari kita eja kata diawali huruf ${target}.`;
+          setStatus(`Konteks ejaan jari disarankan untuk ${target}.`);
+        } else {
+          sentenceEl.value = "Mohon perhatikan instruksi di depan kelas.";
+        }
+      });
+    }
+
+    // Toggle Preview Kamera Langsung pada Panel Perekam
+    const toggleCamBtn = document.getElementById("btn-toggle-rec-cam");
+    if (toggleCamBtn) {
+      toggleCamBtn.addEventListener("click", async () => {
+        if (!this.vision.running) {
+          setStatus("Menyalakan kamera preview...");
+          const ok = await this.vision.startCamera();
+          if (ok) {
+            this.syncRecorderCameraStream();
+            toggleCamBtn.textContent = "Matikan Kamera";
+            setStatus("Kamera aktif. Silakan posisikan diri Anda dalam bingkai.");
+            const camInd = document.getElementById("rec-cam-indicator");
+            const camTxt = document.getElementById("rec-cam-text");
+            if (camInd) camInd.classList.add("active");
+            if (camTxt) camTxt.textContent = "Kamera Aktif";
+          } else {
+            setStatus("Gagal menyalakan kamera. Periksa izin perangkat atau buka via http://localhost:8080.");
+          }
+        } else {
+          this.vision.stopCamera();
+          this.detachRecorderCameraStream();
+          toggleCamBtn.textContent = "Nyalakan Kamera";
+          setStatus("Kamera dimatikan.");
+          const camInd = document.getElementById("rec-cam-indicator");
+          const camTxt = document.getElementById("rec-cam-text");
+          if (camInd) camInd.classList.remove("active");
+          if (camTxt) camTxt.textContent = "Kamera Nonaktif";
+        }
       });
     }
 
@@ -1051,8 +1185,16 @@ class SignBridgeApp {
         if (this._recording) return;
         const signer = document.getElementById("rec-signer")?.value || "S01";
         const category = catSelect?.value || "gloss";
-        const target = targetSelect?.value || "HALO";
+        const target = (targetSelect?.value || "").trim();
+        if (!target) {
+          setStatus("Target gloss/huruf wajib dipilih sebelum merekam. Tidak ada sampel dibuat.");
+          return;
+        }
         const label = category === "gloss" ? BISINDO_GLOSSES.indexOf(target) : FINGERSPELL_LABELS.indexOf(target);
+        if (label < 0) {
+          setStatus(`Target '${target}' tidak valid pada Dictionary B. Pilih gloss yang sah sebelum merekam.`);
+          return;
+        }
         const sentence = (sentenceEl?.value || "").trim();
 
         // Kamera wajib aktif: keypoint & citra diambil dari frame kamera asli (tanpa data sintetis)
@@ -1063,6 +1205,14 @@ class SignBridgeApp {
             setStatus("Kamera tidak dapat diakses. Klip tidak direkam.");
             return;
           }
+          this.syncRecorderCameraStream();
+          const camInd = document.getElementById("rec-cam-indicator");
+          const camTxt = document.getElementById("rec-cam-text");
+          if (camInd) camInd.classList.add("active");
+          if (camTxt) camTxt.textContent = "Kamera Aktif";
+          if (toggleCamBtn) toggleCamBtn.textContent = "Matikan Kamera";
+        } else {
+          this.syncRecorderCameraStream();
         }
         this._recording = true;
         recBtn.disabled = true;
@@ -1072,7 +1222,7 @@ class SignBridgeApp {
             await new Promise((r) => setTimeout(r, 700));
           }
           setStatus(`Merekam ${target} (2,5 detik): peragakan isyarat sambil mengucapkan kalimat.`);
-          this.capture = this.capture || new MultimodalCapture({ videoEl: document.getElementById("camera-video") });
+          this.capture = this.capture || new MultimodalCapture({ videoEl: document.getElementById("rec-camera-video") || document.getElementById("camera-video") });
           const res = await this.capture.capture(2500);
           if (res.numFrames < 8) {
             setStatus(`Hanya ${res.numFrames} frame tertangkap; pastikan tubuh & tangan terlihat kamera. Klip dibuang.`);
@@ -1084,13 +1234,23 @@ class SignBridgeApp {
             target,
             label,
             keypoints: res.keypoints,
+            frameRecords: res.frameRecords,
+            audioStartOffsetMs: res.audioStartOffsetMs,
+            audioStatus: res.audioStatus,
+            audioReason: res.audioReason,
             sentence,
             wav: res.wav,
             handJpg: res.handJpg,
             portraitJpg: res.portraitJpg
           });
           refreshSummary();
-          speakText(`Klip ${target} tersimpan`, "id-ID");
+          if (res.audioStatus === "missing" || !res.wav) {
+            setStatus(
+              `PERINGATAN AUDIO: ${res.audioErrorMessage || "Audio tidak terekam."} Klip ${target} disimpan (${res.numFrames} frame, audio = missing). Silakan periksa mikrofon lalu coba rekam kembali.`
+            );
+          } else {
+            setStatus(`Klip ${target} berhasil disimpan (${res.numFrames} frame, ${res.audioSeconds.toFixed(1)} dtk audio).`);
+          }
         } finally {
           this._recording = false;
           recBtn.disabled = false;

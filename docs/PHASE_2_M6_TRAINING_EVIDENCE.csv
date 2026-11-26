@@ -1,0 +1,8 @@
+artifact_or_run,location,data_source,real_or_synthetic,epochs_or_records,metrics_reported,valid_for_research,notes
+M6_multimodal_fusion (real),outputs/experiments/M6_multimodal_fusion/,None (directory does not exist),NONE,0,None,FALSE,No real M6 training has been executed
+M6_multimodal_fusion_smoke,outputs/experiments/M6_multimodal_fusion_smoke/best_model.pt,build_smoke_manifest() random uniform keypoints + sine wave audio + gloss text (image=0),SYNTHETIC/DUMMY,2 epochs (64 train / 32 val / 32 test),train_acc=0.0156; val_acc=0.0938; test_acc=0.125; macro_f1=0.0558; loss=3.3802,FALSE,Explicitly marked SMOKE TEST dengan data acak - bukan hasil penelitian
+M6 ONNX Export,web/model/multimodal_fusion.onnx,None (file does not exist),NONE,0,None,FALSE,MultimodalService returns available=False (HTTP 503)
+Paired Recorder ZIPs,data/raw/web_zips/,None (directory does not exist),NONE,0,None,FALSE,No real paired Recorder clips collected yet
+Multimodal Manifest,data/multimodal/manifest_multimodal.csv,None (directory does not exist),NONE,0,None,FALSE,Cannot run real M6 training until manifest is built
+M0_student_baseline,outputs/experiments/M0_student_baseline/,WL-BISINDO pose dataset (single-modality video/pose),REAL (UNIMODAL POSE ONLY),See outputs/experiments/M0_student_baseline/evaluation_metrics.json,Pose-only baseline,TRUE (for pose unimodal only),Not a 4-modality M6 fusion run
+M1_stgcn_baseline,outputs/experiments/M1_stgcn_baseline/,WL-BISINDO pose dataset (single-modality video/pose),REAL (UNIMODAL POSE ONLY),See outputs/experiments/M1_stgcn_baseline/evaluation_metrics.json,Pose-only baseline,TRUE (for pose unimodal only),Not a 4-modality M6 fusion run

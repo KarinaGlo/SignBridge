@@ -1,0 +1,4 @@
+# Immutable Raw Responses Directory
+# Place received raw CSV response files from Validator A and Validator B here immediately upon receipt.
+# Run SHA-256 calculation before any inspection or copy.
+

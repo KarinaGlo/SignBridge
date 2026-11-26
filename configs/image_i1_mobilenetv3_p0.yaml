@@ -1,0 +1,25 @@
+# configs/image_i1_mobilenetv3_p0.yaml — SignBridge P0: MobileNetV3-Small (26 Kelas A-Z, 224x224)
+experiment_id: "image_i1_mobilenetv3_p0"
+seed: 42
+
+data:
+  manifest: "data/processed/bisindo_alphabet/manifest.csv"
+  audit_manifest: "data/processed/bisindo_alphabet/preprocessing_audit_manifest.csv"
+  num_classes: 26
+  image_size: 224
+
+model:
+  arch: "mobilenetv3_small"
+  num_classes: 26
+  dropout: 0.2
+
+training:
+  epochs: 25
+  batch_size: 32
+  lr: 0.0005
+  weight_decay: 0.01
+  label_smoothing: 0.05
+  min_lr: 0.00001
+
+output_dir: "runs/image_i1_mobilenetv3_p0"
+

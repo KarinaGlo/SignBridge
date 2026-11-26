@@ -1,0 +1,39 @@
+{
+  "experiment_id": "M6_multimodal_fusion_SMOKE_RANDOM_DATA",
+  "best_epoch": 2,
+  "epochs_trained": 2,
+  "parameters": 1603456,
+  "availability_per_split": {
+    "train": {
+      "video": 64,
+      "image": 0,
+      "audio": 64,
+      "text": 64
+    },
+    "val": {
+      "video": 32,
+      "image": 0,
+      "audio": 32,
+      "text": 32
+    },
+    "test": {
+      "video": 32,
+      "image": 0,
+      "audio": 32,
+      "text": 32
+    }
+  },
+  "test": {
+    "n": 32,
+    "accuracy": 0.125,
+    "macro_f1": 0.055846291866028706,
+    "loss": 3.380183458328247,
+    "mean_modality_weights": {
+      "video": 0.34374314546585083,
+      "image": 0.0,
+      "audio": 0.333163857460022,
+      "text": 0.3230929970741272
+    }
+  },
+  "note": "SMOKE TEST dengan data acak \u2014 bukan hasil penelitian."
+}

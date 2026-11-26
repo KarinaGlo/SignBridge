@@ -1,0 +1,54 @@
+flowchart TD
+    subgraph SENSORY_ACQUISITION["1. Sensory Acquisition & Computer Vision Front-End"]
+        A1["Camera Video Stream (Webcam 30 FPS / 640x480)"] --> A2["MediaPipe Holistic WASM / WebGL 2.0 Engine"]
+        A2 --> A3["Raw 543 Landmarks per Frame:<br/>• Pose: 33 landmarks [x, y, z, vis]<br/>• Left Hand: 21 landmarks [x, y, z]<br/>• Right Hand: 21 landmarks [x, y, z]<br/>• Face Mesh: 468 landmarks [x, y, z]"]
+    end
+
+    subgraph NODE_SELECTION["2. 86-Node Feature Topology Extraction (signbridge/constants.py)"]
+        A3 --> B1["Extract 86 Canonical Nodes (d=3, total 258 features/frame):<br/>• Pose Body Upper (11): 0, 11-16, 23, 24, 17, 18<br/>• Left Hand (21): Hand Landmarks 0..20<br/>• Right Hand (21): Hand Landmarks 0..20<br/>• Face Expression Anchor (33): Lips, Eyebrows, Eye Countours"]
+    end
+
+    subgraph SPATIAL_NORMALIZATION["3. Spatial Coordinate Normalization (features.py & features.js)"]
+        B1 --> C1["Shoulder Center Calculation:<br/>midpoint = (left_shoulder + right_shoulder) / 2"]
+        C1 --> C2["Center Translation:<br/>node_coord = node_coord - midpoint"]
+        C2 --> C3["Scale Invariance Normalization:<br/>scale = ||left_shoulder - right_shoulder||_2<br/>node_coord = node_coord / max(scale, 1e-6)"]
+        C3 --> C4["Coordinate Frame Contract:<br/>X: Right positive [-2, 2], Y: Down positive [-2, 2], Z: Depth relative"]
+    end
+
+    subgraph TEMPORAL_PROCESSING["4. Temporal Buffer & Resampling (Sliding Window)"]
+        C4 --> D1["Dynamic Sliding Window Buffer:<br/>Maintains rolling window of valid frames (T_current <= 96)"]
+        D1 --> D2{"Buffer Ready Check:<br/>len(buffer) >= MIN_FRAMES (16)?"}
+        D2 -- No --> D3["Continue buffering, output Idle/Buffering state"]
+        D2 -- Yes --> D4["Uniform Temporal Linear Resampling:<br/>T_resample = 64 frames (fixed model input length)<br/>Array shape: [1, 64, 86, 3] Float32Array"]
+    end
+
+    subgraph INFERENCE_ENGINE["5. Deep Learning Model Inference (ONNX Runtime Web)"]
+        D4 --> E1["ONNX Runtime Web Session (WASM SIMD, 1-thread)"]
+        E1 --> E2{"Active Runtime Model"}
+        E2 -->|"Default Deployed Model"| E3["M0: Student Pose Transformer<br/>• Architecture: Linear projection + 2-layer Positional Transformer Encoder<br/>• Parameters: 1,335,872 (FP32, 5.46 MB)<br/>• Input: [1, 64, 86, 3]<br/>• Output: Raw Logits [1, 32]"]
+        E2 -->|"Alternative Offline Model"| E4["M1: ST-GCN Spatial-Temporal Graph ConvNet<br/>• Architecture: 4 ST-GCN blocks on 86-node 3-partition adjacency<br/>• Parameters: 1,481,248 (FP32)<br/>• Input: [1, 3, 64, 86]"]
+    end
+
+    subgraph POST_PROCESSING["6. Probabilistic Post-Processing & Decision Boundary"]
+        E3 --> F1["Softmax Normalization:<br/>p_i = exp(logit_i) / sum(exp(logits))"]
+        F1 --> F2["Top-1 Confidence (C1) & Top-2 Margin (C1 - C2)"]
+        F2 --> F3{"Two-Tier Dynamic Filtering:<br/>1. Is Hands in Signing Space?<br/>2. C1 >= Threshold (0.45)?<br/>3. (C1 - C2) >= Margin (0.10)?"}
+        F3 -- Pass --> F4["Stable Gloss Candidate (e.g., 'SAYA', 'MAKAN', 'TERIMA_KASIH')"]
+        F3 -- Fail Top-1 --> F5["Low-Confidence Sign Buffer (Candidate for Fingerspell Fallback)"]
+    end
+
+    subgraph HYBRID_FALLBACK["7. Hybrid Fallback & Multimodal Disambiguation"]
+        F5 --> G1{"Static Hand Shape Detected?<br/>Hand Static Velocity < V_thresh"}
+        G1 -- Yes --> G2["Fingerspelling Classifier:<br/>1. Geometric Rule Engine (classifyAlphabetGeometry - 21 hand joints)<br/>2. image_i1 MobileNetV3 (Disabled in prod due to 3.85% test acc)"]
+        G1 -- No --> G3["Reject as Idle / Transition Motion / Noise"]
+        G2 --> G4["Alphabet Output (A-Z)"]
+    end
+
+    subgraph TEXT_SYNTHESIS["8. Semantic Sentence Synthesis & Output"]
+        F4 --> H1["Gloss Sequence Accumulator (FIFO de-duplication)"]
+        G4 --> H1
+        H1 --> H2["B0: Rule-Based Dictionary & Grammar Reconstructor (sentence.js)"]
+        H2 --> H3["Grammar Transformation Rules:<br/>[SAYA, MAKAN] -> 'Saya makan'<br/>[KAMU, SUKA, APA] -> 'Apa yang kamu suka?'"]
+        H3 --> H4["Client Web Speech API (TTS: id-ID Synthetic Voice) & UI Display"]
+    end
+

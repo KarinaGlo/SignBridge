@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentasi Progres Minggu 1 — SignBridge ML Project</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --accent: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Presentation Header & Status */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--surface-border);
+      z-index: 10;
+    }
+
+    .project-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .project-badge span {
+      background: rgba(6, 182, 212, 0.15);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #38bdf8;
+    }
+
+    .slide-indicator {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Slide Stage */
+    .deck-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 30px 50px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateX(30px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+    }
+
+    .slide.prev {
+      transform: translateX(-30px);
+    }
+
+    /* Slide Typography */
+    .slide-category {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .slide-title {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .slide-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: -12px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* Grid & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+
+    .card h3 {
+      font-size: 16px;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p, .card li {
+      font-size: 13.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .card ul {
+      margin-left: 18px;
+      margin-top: 6px;
+    }
+
+    .card ul li {
+      margin-bottom: 4px;
+    }
+
+    /* Highlighting Stats */
+    .stat-box {
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 30px;
+      font-weight: 800;
+      color: #60a5fa;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Alert / Warning Card */
+    .alert-card {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .alert-card h4 {
+      color: #f87171;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    /* Tables */
+    .slide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 8px;
+    }
+
+    .slide-table th {
+      background: rgba(30, 41, 59, 0.9);
+      color: #38bdf8;
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--surface-border);
+      font-weight: 600;
+    }
+
+    .slide-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--surface-border);
+      color: #cbd5e1;
+    }
+
+    .badge-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .badge-info { background: rgba(6, 182, 212, 0.2); color: #38bdf8; }
+
+    /* ===================================================
+       DIAGRAM & PIPELINE VISUAL COMPONENTS
+       =================================================== */
+    .arch-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .arch-layer {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 16px;
+      position: relative;
+    }
+
+    .arch-layer-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .flow-node {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .flow-node.highlight {
+      border-color: #06b6d4;
+      background: rgba(6, 182, 212, 0.08);
+    }
+
+    .flow-node h5 {
+      font-size: 12.5px;
+      color: #60a5fa;
+      margin-bottom: 3px;
+      font-weight: 700;
+    }
+
+    .flow-node p {
+      font-size: 10.5px;
+      color: #cbd5e1;
+      line-height: 1.35;
+    }
+
+    .flow-arrow {
+      color: #38bdf8;
+      font-size: 16px;
+      font-weight: 800;
+      user-select: none;
+    }
+
+    .flow-contract-badge {
+      position: absolute;
+      top: -7px;
+      right: 6px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 8.5px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    /* Footer & Controls */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: rgba(30, 41, 59, 0.7);
+      border-top: 1px solid var(--surface-border);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--surface);
+      color: var(--text-main);
+      border: 1px solid var(--surface-border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--surface-border);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .keys-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    kbd {
+      background: #334155;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #e2e8f0;
+    }
+
+    /* Print styling */
+    @media print {
+      body {
+        overflow: visible;
+        height: auto;
+        background: #fff !important;
+        color: #000 !important;
+      }
+      .top-bar, .bottom-bar {
+        display: none !important;
+      }
+      .deck-container {
+        display: block;
+      }
+      .slide {
+        position: relative !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        page-break-after: always;
+        height: 100vh;
+        background: #ffffff !important;
+        color: #1e293b !important;
+        border: 1px solid #ccc;
+      }
+      .slide-title {
+        background: none !important;
+        -webkit-text-fill-color: #0f172a !important;
+      }
+      .card, .flow-node, .arch-layer {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+      }
+      .card p, .card li, .slide-table td, .flow-node p {
+        color: #334155 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <div class="top-bar">
+    <div class="project-badge">
+      SignBridge ASEAN <span>ML SEMESTER 5 — PROJEK 1</span>
+    </div>
+    <div class="slide-indicator" id="slideIndicator">Slide 1 / 14</div>
+  </div>
+
+  <!-- Slides Stage -->
+  <div class="deck-container">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active">
+      <div class="slide-category">LAPORAN KEMAJUAN PROYEK — MINGGU 1</div>
+      <h1 class="slide-title" style="font-size: 40px; margin-bottom: 14px;">
+        SignBridge ID–PH
+      </h1>
+      <p class="slide-subtitle" style="font-size: 19px; color: #38bdf8; max-width: 850px;">
+        Jembatan Komunikasi Multimodal Real-Time Bahasa Isyarat Indonesia (BISINDO) & Filipina (FSL) Berbasis Browser Edge
+      </p>
+
+      <div class="grid-3" style="margin-top: 24px;">
+        <div class="card" style="border-top: 4px solid #2563eb;">
+          <h3 style="font-size: 15px; color: #fff;">Farrel</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Data Extraction & Preprocessing Lead</p>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">Kontrak 1, 3, & 4 &bull; MediaPipe 86 Titik & Normalisasi Bahu</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #06b6d4;">
+          <h3 style="font-size: 15px; color: #fff;">Jonnathan</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Model Architecture & Training Lead</p>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">M0 Student Transformer, M1 ST-GCN, I1 MobileNetV3</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+          <h3 style="font-size: 15px; color: #fff;">Gloria (KarinaGlo)</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Systems, Evaluation, ONNX & Frontend Lead</p>
+          <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">Kontrak 2, 5, 6 &bull; WebAssembly PWA, Speech/NLP & FastAPI</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Problem Background -->
+    <div class="slide">
+      <div class="slide-category">LATAR BELAKANG & MOTIVASI</div>
+      <h2 class="slide-title">Mengapa SignBridge Dibutuhkan?</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Barrier Komunikasi Inklusif</h3>
+          <p>Siswa Tuli di ruang kelas reguler sering mengalami keterbatasan interaksi dua arah dengan guru dan teman dengar karena ketiadaan juru bahasa isyarat berdedikasi.</p>
+          <p style="margin-top: 8px; font-size: 12px; color: var(--accent);">Target: SDG 4.5 & 4.a (Pendidikan Inklusif Berkeadilan).</p>
+        </div>
+        <div class="card">
+          <h3>Kelemahan Solusi Cloud</h3>
+          <p>Sistem penerjemah isyarat konvensional membutuhkan transmisi video mentah ke server GPU eksternal, memicu masalah latensi tinggi (>300 ms), biaya sewa server, dan isu privasi video siswa.</p>
+        </div>
+        <div class="card">
+          <h3>Isolasi Lintas Negara ASEAN</h3>
+          <p>Belum ada jembatan translasi isyarat yang menghubungkan BISINDO (Indonesia) dan FSL (Filipino Sign Language) untuk kolaborasi dan pertukaran pelajar inklusif regional.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 16px; background: rgba(37, 99, 235, 0.08); border-color: rgba(37, 99, 235, 0.3);">
+        <p><strong>Peluang Riset:</strong> Membangun sistem inferensi isyarat <em>client-side browser-first</em> menggunakan <strong>MediaPipe Holistic + ONNX WebAssembly</strong> yang berjalan murni di laptop sekolah tanpa instalasi aplikasi native.</p>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Objective & System Specs -->
+    <div class="slide">
+      <div class="slide-category">TUJUAN & SPESIFIKASI PROYEK</div>
+      <h2 class="slide-title">Tujuan Teknis & Sasaran Rekayasa</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Tujuan Utama Penelitian</h3>
+          <ul>
+            <li>Mengembangkan aplikasi web penerjemah bahasa isyarat 2-arah yang ringan dan real-time.</li>
+            <li>Mengeliminasi ketergantungan pada GPU server dengan inferensi lokal di browser via ONNX Runtime Web.</li>
+            <li>Menjamin konsistensi matematis penuh (paritas) antara pipeline ekstraksi Python dan frontend JavaScript.</li>
+            <li>Mendukung 4 modalitas interaksi kelas: Isyarat Kata Dinamis, Ejaan Abjad Statis, Suara (ASR), dan Teks Kalimat.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Target Spesifikasi Rekayasa</h3>
+          <div class="grid-2" style="gap: 12px; margin-top: 6px;">
+            <div class="stat-box">
+              <div class="stat-number">&le; 50 ms</div>
+              <div class="stat-label">Latensi Inferensi Web (&ge; 20 FPS)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">&lt; 10 MB</div>
+              <div class="stat-label">Ukuran Model ONNX (Web Friendly)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">&lt; 1e-4</div>
+              <div class="stat-label">Toleransi Paritas PyTorch vs ONNX</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">4 Modalitas</div>
+              <div class="stat-label">Video, Citra, Audio, & Teks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: DIAGRAM ARSITEKTUR SISTEM TINGKAT TINGGI (BARU!) -->
+    <div class="slide">
+      <div class="slide-category">ARSITEKTUR SISTEM</div>
+      <h2 class="slide-title">Diagram Arsitektur Sistem SignBridge Tingkat Tinggi</h2>
+      <p class="slide-subtitle">Struktur interaksi dua lapis: Inferensi Mandiri di Browser (Edge) & Layanan Relay Backend:</p>
+
+      <div class="arch-container">
+        <!-- Client Side Box -->
+        <div class="arch-layer" style="border-color: #3b82f6;">
+          <div class="arch-layer-title">
+            <span class="badge-pill badge-info">Lapis 1: Client Browser (PWA Edge — Zero Cloud Inference)</span>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node">
+              <h5>1. Input Modalitas</h5>
+              <p>• Webcam (30 FPS)<br>• Mikrofon Audio<br>• Teks Pesan</p>
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node highlight">
+              <span class="flow-contract-badge">Kontrak 1 & 4</span>
+              <h5>2. MediaPipe Holistic</h5>
+              <p>543 Keypoint Pose/Hands/Face Mesh (WebGL 2.0 Engine)</p>
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node highlight">
+              <span class="flow-contract-badge">Kontrak 3</span>
+              <h5>3. Preprocessing Paritas</h5>
+              <p>Normalisasi Bahu & Resampling Linear 64 Frame</p>
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node highlight">
+              <span class="flow-contract-badge">Kontrak 2 & 5</span>
+              <h5>4. ONNX Runtime Web</h5>
+              <p>WASM SIMD Inferensi<br>M0 (5.4MB) / I1 Abjad</p>
+            </div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-node">
+              <h5>5. Decision & Output</h5>
+              <p>Threshold Guard, Rule Sentence, TTS Suara & UI</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection Arrow -->
+        <div style="text-align: center; color: #94a3b8; font-size: 12px; margin: -4px 0;">
+          ↕ Protokol Sinkronisasi: REST API Fallback & WebSocket Ruang Kelas 2-Arah (Kontrak 6)
+        </div>
+
+        <!-- Backend Box -->
+        <div class="arch-layer" style="border-color: #10b981;">
+          <div class="arch-layer-title">
+            <span class="badge-pill badge-success">Lapis 2: Backend Relay & Jembatan ASEAN (FastAPI Server)</span>
+          </div>
+          <div class="flow-row">
+            <div class="flow-node" style="border-color: #10b981;">
+              <h5>REST Endpoints</h5>
+              <p>/predict fallback & /asr audio transkripsi</p>
+            </div>
+            <div class="flow-node" style="border-color: #10b981;">
+              <h5>WebSocket /ws/{room}</h5>
+              <p>Relay pesan interaktif kelas 2-arah (Rate limited 60 req/min)</p>
+            </div>
+            <div class="flow-node" style="border-color: #10b981;">
+              <h5>Jembatan BISINDO ↔ FSL</h5>
+              <p>Lapis 1: Kamus Konsep (concepts.csv)<br>Lapis 2: Neural Translation</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: DIAGRAM PIPELINE KOMPUTASI ML DETAIL (BARU!) -->
+    <div class="slide">
+      <div class="slide-category">PIPELINE KOMPUTASI ML</div>
+      <h2 class="slide-title">Diagram Pipeline Komputasi Ekstraksi & Inferensi E2E</h2>
+      <p class="slide-subtitle">Alur transformasi tensor dari frame kamera hingga sintesis audio (Total Latensi: 34,4 ms):</p>
+
+      <div class="diagram-wrapper" style="padding: 14px;">
+        <!-- Step Row 1 -->
+        <div class="flow-row" style="margin-bottom: 12px;">
+          <div class="flow-node" style="border-color: #38bdf8;">
+            <h5>1. Video Stream</h5>
+            <p>Webcam 640x480<br>30 FPS Real-time</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node" style="border-color: #38bdf8;">
+            <h5>2. MediaPipe Holistic</h5>
+            <p>Deteksi 543 titik raw<br>[Pose 33, Hand 42, Face 468]</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node highlight">
+            <span class="flow-contract-badge">Kontrak 1</span>
+            <h5>3. Filter 86 Node</h5>
+            <p>Seleksi: 11 tubuh, 42 tangan, 33 wajah ekspresif</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node highlight">
+            <span class="flow-contract-badge">Kontrak 3</span>
+            <h5>4. Normalisasi Bahu</h5>
+            <p>Center = (bahu_L + bahu_R)/2<br>Scale = ||bahu_L - bahu_R||</p>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div style="text-align: right; padding-right: 30px; color: #38bdf8; font-size: 16px; font-weight: bold; margin: -6px 0;">
+          &darr; Tensor [T_var, 86, 3] Float32
+        </div>
+
+        <!-- Step Row 2 -->
+        <div class="flow-row">
+          <div class="flow-node highlight">
+            <h5>5. Resampling 64 Frame</h5>
+            <p>Sliding Window Buffer<br>Output: [1, 64, 86, 3]</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node highlight">
+            <span class="flow-contract-badge">Kontrak 2</span>
+            <h5>6. ONNX Web Runtime</h5>
+            <p>M0 Student Transformer<br>Logits [1, 32] (11.2 ms)</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node" style="border-color: #f59e0b;">
+            <h5>7. Two-Tier Decision</h5>
+            <p>Top1 Conf &ge; 0.45, Margin &ge; 0.10<br>& Signing Space Guard</p>
+          </div>
+          <div class="flow-arrow">&rarr;</div>
+          <div class="flow-node" style="border-color: #10b981;">
+            <h5>8. Output Multimodal</h5>
+            <p>Sintesis Kalimat (sentence.js)<br>& Web Speech TTS (id-ID)</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: #94a3b8;">
+        <span>⚡ <strong>Waktu Komputasi:</strong> MediaPipe (22,4 ms) + Normalisasi (0,8 ms) + ONNX (11,2 ms) = <strong>34,4 ms (29.1 FPS)</strong></span>
+        <span>🛡️ <strong>Safety Fallback:</strong> Gerakan statis &gt; Beralih ke MobileNetV3 / Geometri Abjad A-Z</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: 4 Modalities Architecture -->
+    <div class="slide">
+      <div class="slide-category">ARSITEKTUR MULTIMODAL</div>
+      <h2 class="slide-title">4 Modalitas Input Ruang Kelas SignBridge</h2>
+      <div class="grid-4">
+        <div class="card">
+          <div class="badge-pill badge-info" style="margin-bottom: 8px;">Modalitas 1: Video</div>
+          <h3 style="font-size: 15px;">Kata Dinamis (WL-BISINDO)</h3>
+          <p>Menerjemahkan 32 kata isyarat gerakan utuh berbasis sekuens 86 titik koordinat tubuh (64 frame).</p>
+          <p style="margin-top: 8px; font-size: 12px; color: var(--accent);">Model: M0 Student Transformer & M1 ST-GCN.</p>
+        </div>
+        <div class="card">
+          <div class="badge-pill badge-info" style="margin-bottom: 8px;">Modalitas 2: Citra</div>
+          <h3 style="font-size: 15px;">Ejaan Jari (Fingerspelling)</h3>
+          <p>Mengenali bentuk tangan statis untuk 26 abjad Latin (A–Z) dari crop bounding box tangan 224x224 piksel.</p>
+          <p style="margin-top: 8px; font-size: 12px; color: var(--accent);">Model: MobileNetV3-Small (I1) + Heuristik Geometri.</p>
+        </div>
+        <div class="card">
+          <div class="badge-pill badge-info" style="margin-bottom: 8px;">Modalitas 3: Audio</div>
+          <h3 style="font-size: 15px;">Pengenalan Suara (ASR)</h3>
+          <p>Menangkap ujaran lisan guru/teman dengar dan mengubahnya ke teks secara langsung untuk ditranslasi ke isyarat.</p>
+          <p style="margin-top: 8px; font-size: 12px; color: var(--accent);">Engine: Web Speech API & Whisper Fine-Tuning.</p>
+        </div>
+        <div class="card">
+          <div class="badge-pill badge-info" style="margin-bottom: 8px;">Modalitas 4: Teks</div>
+          <h3 style="font-size: 15px;">Sintesis Kalimat Alami</h3>
+          <p>Mengubah rangkaian kata gloss isyarat menjadi kalimat alami bahasa Indonesia/Tagalog yang terstruktur rapi.</p>
+          <p style="margin-top: 8px; font-size: 12px; color: var(--accent);">Engine: Rule-Based Template (B0) & IndoT5.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: 6 Team Contracts -->
+    <div class="slide">
+      <div class="slide-category">STANDARISASI & REKAYASA PERANGKAT LUNAK</div>
+      <h2 class="slide-title">6 Kontrak Antarmuka Lintas Anggota Tim</h2>
+      <p class="slide-subtitle">Setiap anggota tim terikat oleh kontrak antarmuka ketat untuk mencegah divergensi kode:</p>
+      <div class="grid-3">
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 1: Topologi 86 Node</h3>
+          <p>Mereduksi 543 titik MediaPipe Holistic menjadi 86 titik kanonis: 11 tubuh, 21 tangan kiri, 21 tangan kanan, dan 33 titik wajah ekspresif.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 2: I/O Model ONNX</h3>
+          <p>Input wajib berdimensi <code>[B, 64, 86, 3]</code> float32 dan output logits <code>[B, 32]</code>. Ukuran biner wajib di bawah 10 MB.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 3: Paritas Python ≡ JS</h3>
+          <p>Pipeline normalisasi bahu dan resampling 64 frame di <code>features.py</code> dan <code>features.js</code> diverifikasi identik numerik (diff &lt; 1e-5).</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 4: Hand Crop Parity</h3>
+          <p>Crop kotak tangan +25% padding persegi ke resolusi 224x224 diuji identik antara Python dan JavaScript.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 5: Model Citra Abjad</h3>
+          <p>Model abjad menerima input tensor citra <code>[B, 3, 224, 224]</code> dan mengeluarkan 26 probabilitas abjad.</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size: 15px;">Kontrak 6: Backend Hibrida</h3>
+          <p>FastAPI menyediakan endpoint fallback dan ruang kelas WebSocket 2-arah dengan pembatas laju (rate-limiter).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Dataset & Preprocessing Pipeline -->
+    <div class="slide">
+      <div class="slide-category">DATASET & PREPROCESSING</div>
+      <h2 class="slide-title">Manajemen Dataset & Ekstraksi 86 Titik</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Inventaris Dataset yang Digunakan</h3>
+          <table class="slide-table">
+            <tr>
+              <th>Dataset</th>
+              <th>Sampel</th>
+              <th>Status</th>
+            </tr>
+            <tr>
+              <td>WL-BISINDO Video</td>
+              <td>1.600 klip (32 kata)</td>
+              <td><span class="badge-pill badge-success">Manifest Valid</span></td>
+            </tr>
+            <tr>
+              <td>Mendeley Alphabet</td>
+              <td>4.466 gambar (A–Z)</td>
+              <td><span class="badge-pill badge-info">Citra Tangan</span></td>
+            </tr>
+            <tr>
+              <td>FLEURS Indonesian</td>
+              <td>3.616 audio transkrip</td>
+              <td><span class="badge-pill badge-warning">Manifest Audio</span></td>
+            </tr>
+            <tr>
+              <td>Parallel Gloss-Text</td>
+              <td>305 pasang kalimat</td>
+              <td><span class="badge-pill badge-warning">Minim (Perlu Sintesis)</span></td>
+            </tr>
+            <tr>
+              <td>Tatoeba Indonesian</td>
+              <td>28.418 kalimat</td>
+              <td><span class="badge-pill badge-info">Korpus Teks</span></td>
+            </tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Pipeline Ekstraksi & Normalisasi</h3>
+          <ol style="margin-left: 18px; font-size: 12.5px; color: #cbd5e1; line-height: 1.75;">
+            <li><strong>Video Input:</strong> Frame video 640x480 pada 30 FPS.</li>
+            <li><strong>MediaPipe Holistic:</strong> Deteksi 543 titik skeletal (Pose, Hands, Face).</li>
+            <li><strong>Seleksi 86 Node:</strong> Membuang titik tubuh bawah untuk efisiensi transfer data.</li>
+            <li><strong>Normalisasi Spasial:</strong>
+              <div style="background: #0f172a; padding: 5px; border-radius: 4px; margin: 4px 0; font-family: monospace; font-size: 11px;">
+                center = (bahu_kiri + bahu_kanan) / 2<br>
+                scale = ||bahu_kiri - bahu_kanan||<br>
+                coord = (coord - center) / max(scale, 1e-6)
+              </div>
+            </li>
+            <li><strong>Resampling Temporal:</strong> Interpolasi seragam menjadi tepat 64 frame.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Week 1 Milestones -->
+    <div class="slide">
+      <div class="slide-category">CAPAIAN MINGGU PERTAMA</div>
+      <h2 class="slide-title">Progres & Deliverables Minggu 1</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>1. Fondasi Kode & Testing Otomatis</h3>
+          <ul>
+            <li>Inisialisasi repositori Git dan branch <code>feature/field-test-readiness</code>.</li>
+            <li>Implementasi suite automated test: <code>pytest</code> (18 tes) dan <code>node --test</code>.</li>
+            <li>Verifikasi paritas fitur Python-JS lulus 100% tanpa selisih numerik.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>2. Eksperimen Baseline Video</h3>
+          <ul>
+            <li>Model <strong>M0 (Student Pose Transformer)</strong> berhasil dilatih (1,33 juta parameter).</li>
+            <li>Model <strong>M1 (Spatial-Temporal GCN)</strong> 4-blok berhasil dilatih (1,48 juta parameter).</li>
+            <li>Ekspor model M0 ke format ONNX Runtime Web (5,46 MB).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>3. Integrasi Web & PWA</h3>
+          <ul>
+            <li>Frontend interaktif murni HTML/JavaScript dengan integrasi webcam live.</li>
+            <li>Engine MediaPipe Holistic WASM + WebGL 2.0 berjalan lancar pada 30 FPS.</li>
+            <li>Sintesis suara otomatis (TTS) terintegrasi pada deteksi isyarat valid.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Baseline Results -->
+    <div class="slide">
+      <div class="slide-category">HASIL EKSPERIMEN BASELINE</div>
+      <h2 class="slide-title">Evaluasi Kinerja Model Baseline M0 & M1</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Perbandingan Metrik Pelatihan</h3>
+          <table class="slide-table">
+            <tr>
+              <th>Parameter Evaluasi</th>
+              <th>M0: Student Transformer</th>
+              <th>M1: ST-GCN Baseline</th>
+            </tr>
+            <tr>
+              <td>Jumlah Parameter</td>
+              <td>1.335.872 (1,33 M)</td>
+              <td>1.481.248 (1,48 M)</td>
+            </tr>
+            <tr>
+              <td>Epoch Pelatihan</td>
+              <td>48 epoch (Early stop)</td>
+              <td>79 epoch</td>
+            </tr>
+            <tr>
+              <td>SD Validation Accuracy</td>
+              <td><strong>97.78%</strong></td>
+              <td><strong>98.89%</strong></td>
+            </tr>
+            <tr>
+              <td>SD Test Accuracy</td>
+              <td><strong>99.13%</strong> (456/460)</td>
+              <td><strong>99.13%</strong> (456/460)</td>
+            </tr>
+            <tr>
+              <td>Latensi Inferensi Web</td>
+              <td><strong>11,2 ms</strong> (Sangat Cepat)</td>
+              <td>18,5 ms (Est.)</td>
+            </tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Analisis Profil Latensi Browser</h3>
+          <div class="stat-box" style="margin-bottom: 10px; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+            <div class="stat-number" style="color: #34d399;">34,4 ms / Siklus</div>
+            <div class="stat-label">Total Latensi Pipeline E2E (Setara 29.1 FPS)</div>
+          </div>
+          <ul style="font-size: 12.5px; color: #cbd5e1; line-height: 1.75;">
+            <li><strong>MediaPipe Holistic:</strong> 22,4 ms per frame (WebGL 2.0).</li>
+            <li><strong>Ekstraksi & Normalisasi:</strong> 0,8 ms.</li>
+            <li><strong>Inferensi ONNX Web (M0):</strong> 11,2 ms (WASM SIMD 1-thread).</li>
+            <li><strong>Post-Processing & Decision:</strong> &lt; 0,5 ms.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Critical Findings & Risk Analysis -->
+    <div class="slide">
+      <div class="slide-category">AUDIT & TEMUAN MASALAH</div>
+      <h2 class="slide-title">Temuan Masalah Kritis & Audit Kejujuran ML</h2>
+      <p class="slide-subtitle">Berdasarkan audit mendalam, ditemukan kendala nyata di balik metrik akurasi 99%:</p>
+      <div class="grid-3">
+        <div class="alert-card">
+          <h4>1. Signer Leakage (Data Split)</h4>
+          <p style="font-size: 12.5px; color: #fca5a5;">Akurasi 99.13% diperoleh dari <em>Signer-Dependent split</em> di mana 5 penandatangan yang sama muncul di data latih dan uji. Model belum teruji pada penandatangan baru (unseen user via webcam).</p>
+        </div>
+        <div class="alert-card">
+          <h4>2. Kegagalan Model Abjad (I1)</h4>
+          <p style="font-size: 12.5px; color: #fca5a5;">Model MobileNetV3 abjad menghasilkan akurasi uji <strong>3.85%</strong> (sama persis dengan tebakan acak 1/26). Model di-bypass di frontend menggunakan aturan heuristik geometri tangan.</p>
+        </div>
+        <div class="alert-card" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+          <h4 style="color: #fbbf24;">3. Fake INT8 & Rule Sentence</h4>
+          <p style="font-size: 12.5px; color: #fde68a;">Model <code>student_int8.onnx</code> ternyata duplikat identik dari model FP32 (belum kuantisasi nyata), dan penyusunan kalimat masih menggunakan aturan kamus (WER 62.3%).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Roadmap / Next Steps -->
+    <div class="slide">
+      <div class="slide-category">RENCANA KERJA LANJUTAN</div>
+      <h2 class="slide-title">Roadmap Rencana Kerja Minggu 2 & Seterusnya</h2>
+      <div class="grid-3">
+        <div class="card" style="border-top: 4px solid #ef4444;">
+          <h3>Minggu 2: Remedi Prioritas P0</h3>
+          <ul>
+            <li><strong>LOSO Retraining:</strong> Terapkan split <em>Leave-One-Signer-Out</em> (Signer 1-3 train, Signer 0 val, Signer 4 test).</li>
+            <li><strong>3D Skeletal Augmentation:</strong> Tambahkan scaling random (0.85–1.15), coordinate jitter, dan temporal speed perturbation.</li>
+            <li><strong>Fix Model Abjad:</strong> Latih ulang MobileNetV3 untuk abjad A–Z (target akurasi &ge; 88%).</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 4px solid #f59e0b;">
+          <h3>Minggu 3: Optimasi Kualitas P1</h3>
+          <ul>
+            <li><strong>Kuantisasi Nyata INT8:</strong> Gunakan tool ONNX quantization untuk memangkas biner dari 5,46 MB ke ~1,4 MB.</li>
+            <li><strong>Sintesis Korpus Kalimat:</strong> Perluas data teks dari Tatoeba hingga 5.000 pasang gloss-kalimat.</li>
+            <li><strong>Fine-Tuning IndoT5:</strong> Mulai eksperimen model penerjemah kalimat neural ringan.</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+          <h3>Minggu 4+: Integrasi & Validasi</h3>
+          <ul>
+            <li>Uji coba langsung pada pengguna tuli dengan protokol pengujian unassisted webcam.</li>
+            <li>Implementasi jembatan bilingual kamus konsep BISINDO ↔ FSL.</li>
+            <li>Penyusunan laporan akhir dan dokumentasi ilmiah.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Team Division of Roles -->
+    <div class="slide">
+      <div class="slide-category">ORGANISASI TIM</div>
+      <h2 class="slide-title">Pembagian Peran & Tanggung Jawab Anggota</h2>
+      <div class="grid-3">
+        <div class="card" style="border-top: 4px solid #2563eb;">
+          <h3>Farrel — Data & Preprocessing Lead</h3>
+          <ul>
+            <li>Ekstraksi massal keypoint MediaPipe Holistic ke format NPZ.</li>
+            <li>Pemeliharaan kontrak skema 86 titik koordinat (Kontrak 1).</li>
+            <li>Pengembangan pipeline normalisasi bahu dan augmentasi spasial-temporal 3D.</li>
+            <li>Pemotongan kotak tangan hand crop 224x224 (Kontrak 4).</li>
+            <li>Kurasi korpus teks paralel dan metadata fonologi isyarat.</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 4px solid #06b6d4;">
+          <h3>Jonnathan — Modeling & Architecture Lead</h3>
+          <ul>
+            <li>Desain dan pelatihan arsitektur M0 (Student Transformer) dan M1 (ST-GCN).</li>
+            <li>Pelatihan ulang model abjad MobileNetV3 (I1).</li>
+            <li>Eksperimen distilasi pengetahuan (Teacher-Student Two-Stream).</li>
+            <li>Penerapan loss function label smoothing dan scheduler learning rate.</li>
+            <li>Eksplorasi transfer learning untuk vocabulary FSL.</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+          <h3>Gloria (KarinaGlo) — Systems, ONNX & Frontend Lead</h3>
+          <ul>
+            <li>Verifikasi paritas numerik PyTorch vs ONNX Runtime (Kontrak 2 & 3).</li>
+            <li>Penerapan kuantisasi INT8 dynamic pada model ONNX.</li>
+            <li>Integrasi runtime ONNX Web WASM dan MediaPipe di browser.</li>
+            <li>Desain antarmuka responsif PWA ruang kelas inklusif 2-arah.</li>
+            <li>Pengembangan backend FastAPI, WebSocket relay, dan Speech/NLP.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Closing & Q&A -->
+    <div class="slide">
+      <div class="slide-category">PENUTUP</div>
+      <h2 class="slide-title">Kesimpulan & Sesi Tanya Jawab</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Ringkasan Status Minggu 1</h3>
+          <p>Fondasi rekayasa perangkat lunak, testing otomatis paritas Python-JS, dan arsitektur browser murni telah berhasil dibangun dengan performa <strong>30 FPS real-time</strong>.</p>
+          <p style="margin-top: 10px;">Fokus utama minggu depan adalah memecahkan masalah <em>signer domain shift</em> melalui pelatihan skema <strong>LOSO</strong> dan melatih ulang model abjad agar aplikasi siap diuji langsung di ruang kelas nyata.</p>
+          <div style="margin-top: 16px; padding: 10px; background: rgba(37, 99, 235, 0.15); border-radius: 8px;">
+            <p style="font-size: 12.5px; color: #60a5fa;"><strong>Akses Prototipe Live:</strong> Jalankan server lokal di port 8000 untuk mencoba recognizer real-time.</p>
+          </div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 30px;">
+          <h2 style="font-size: 36px; color: #38bdf8; margin-bottom: 14px;">Terima Kasih</h2>
+          <p style="font-size: 15px; color: #cbd5e1; margin-bottom: 20px;">Silakan jika ada pertanyaan, masukan, atau saran untuk proyek SignBridge ASEAN.</p>
+          <div class="badge-pill badge-info" style="font-size: 13px; padding: 6px 16px;">Q & A SESSION</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation Controls -->
+  <div class="bottom-bar">
+    <div class="keys-hint">
+      Navigasi: <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> atau <kbd>Spasi</kbd> &bull; Cetak ke PDF: <kbd>Ctrl + P</kbd>
+    </div>
+    <div class="controls">
+      <button class="btn" id="prevBtn" onclick="prevSlide()">&larr; Sebelumnya</button>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextSlide()">Selanjutnya &rarr;</button>
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const indicator = document.getElementById('slideIndicator');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function updateSlide() {
+      slides.forEach((slide, idx) => {
+        slide.classList.remove('active', 'prev');
+        if (idx === currentSlide) {
+          slide.classList.add('active');
+        } else if (idx < currentSlide) {
+          slide.classList.add('prev');
+        }
+      });
+      indicator.textContent = `Slide ${currentSlide + 1} / ${totalSlides}`;
+      prevBtn.disabled = currentSlide === 0;
+      nextBtn.textContent = currentSlide === totalSlides - 1 ? "Selesai" : "Selanjutnya →";
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key === 'Home') {
+        currentSlide = 0;
+        updateSlide();
+      } else if (e.key === 'End') {
+        currentSlide = totalSlides - 1;
+        updateSlide();
+      }
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>

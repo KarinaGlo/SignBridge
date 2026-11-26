@@ -1,0 +1,258 @@
+{
+  "total_classes": 26,
+  "total_images": 4466,
+  "corrupt_images": 0,
+  "non_224_count": 0,
+  "non_rgb_count": 0,
+  "dimensions": [
+    "224x224"
+  ],
+  "formats": [
+    "JPEG"
+  ],
+  "total_duplicate_groups": 2,
+  "cross_class_duplicate_groups": 2,
+  "intra_class_duplicate_groups": 0,
+  "cross_class_details": [
+    {
+      "sha256": "99c4a1565f4c49c05be9badc4be2836d9353e35acd49fe2e76dc08aa86d46e53",
+      "files": [
+        {
+          "class": "B",
+          "filename": "B_polos gelap_Iphone_13promax.jpg",
+          "size": 7041
+        },
+        {
+          "class": "E",
+          "filename": "E_polos gelap_Iphone_13promax.jpg",
+          "size": 7041
+        }
+      ]
+    },
+    {
+      "sha256": "a99273b2ca82794cb612bc3ace480521ae73d2cb41d6f406bbc14d586d095aa0",
+      "files": [
+        {
+          "class": "D",
+          "filename": "D_Polos Gelap_iPhone_XR.jpeg",
+          "size": 5119
+        },
+        {
+          "class": "P",
+          "filename": "P_Polos Gelap_iPhone_XR.jpeg",
+          "size": 5119
+        }
+      ]
+    }
+  ],
+  "per_class_stats": {
+    "A": {
+      "count": 165,
+      "corrupt": 0,
+      "min_size": 3247,
+      "max_size": 13573,
+      "avg_size_kb": 6.62,
+      "total_bytes": 1119016
+    },
+    "B": {
+      "count": 169,
+      "corrupt": 0,
+      "min_size": 3192,
+      "max_size": 13134,
+      "avg_size_kb": 6.49,
+      "total_bytes": 1123436
+    },
+    "C": {
+      "count": 169,
+      "corrupt": 0,
+      "min_size": 2154,
+      "max_size": 13910,
+      "avg_size_kb": 5.98,
+      "total_bytes": 1034845
+    },
+    "D": {
+      "count": 170,
+      "corrupt": 0,
+      "min_size": 2995,
+      "max_size": 13591,
+      "avg_size_kb": 6.58,
+      "total_bytes": 1145859
+    },
+    "E": {
+      "count": 169,
+      "corrupt": 0,
+      "min_size": 2290,
+      "max_size": 14592,
+      "avg_size_kb": 6.12,
+      "total_bytes": 1059931
+    },
+    "F": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2670,
+      "max_size": 12696,
+      "avg_size_kb": 6.42,
+      "total_bytes": 1137105
+    },
+    "G": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2819,
+      "max_size": 12782,
+      "avg_size_kb": 6.13,
+      "total_bytes": 1085416
+    },
+    "H": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 3245,
+      "max_size": 13320,
+      "avg_size_kb": 6.64,
+      "total_bytes": 1176225
+    },
+    "I": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2469,
+      "max_size": 14682,
+      "avg_size_kb": 5.96,
+      "total_bytes": 1056053
+    },
+    "J": {
+      "count": 169,
+      "corrupt": 0,
+      "min_size": 2543,
+      "max_size": 14330,
+      "avg_size_kb": 5.83,
+      "total_bytes": 1008876
+    },
+    "K": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2939,
+      "max_size": 13380,
+      "avg_size_kb": 6.39,
+      "total_bytes": 1132032
+    },
+    "L": {
+      "count": 172,
+      "corrupt": 0,
+      "min_size": 2442,
+      "max_size": 14454,
+      "avg_size_kb": 5.99,
+      "total_bytes": 1054994
+    },
+    "M": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 3646,
+      "max_size": 12809,
+      "avg_size_kb": 6.88,
+      "total_bytes": 1218898
+    },
+    "N": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 3187,
+      "max_size": 12372,
+      "avg_size_kb": 6.82,
+      "total_bytes": 1207744
+    },
+    "O": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2504,
+      "max_size": 13844,
+      "avg_size_kb": 6.28,
+      "total_bytes": 1111957
+    },
+    "P": {
+      "count": 172,
+      "corrupt": 0,
+      "min_size": 3135,
+      "max_size": 13719,
+      "avg_size_kb": 6.6,
+      "total_bytes": 1162542
+    },
+    "Q": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2767,
+      "max_size": 13789,
+      "avg_size_kb": 6.7,
+      "total_bytes": 1187760
+    },
+    "R": {
+      "count": 171,
+      "corrupt": 0,
+      "min_size": 2605,
+      "max_size": 14003,
+      "avg_size_kb": 6.13,
+      "total_bytes": 1074184
+    },
+    "S": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 3374,
+      "max_size": 12238,
+      "avg_size_kb": 6.65,
+      "total_bytes": 1178613
+    },
+    "T": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 3158,
+      "max_size": 12822,
+      "avg_size_kb": 6.46,
+      "total_bytes": 1145194
+    },
+    "U": {
+      "count": 173,
+      "corrupt": 0,
+      "min_size": 2501,
+      "max_size": 14241,
+      "avg_size_kb": 6.06,
+      "total_bytes": 1074214
+    },
+    "V": {
+      "count": 172,
+      "corrupt": 0,
+      "min_size": 2710,
+      "max_size": 14698,
+      "avg_size_kb": 6.12,
+      "total_bytes": 1077810
+    },
+    "W": {
+      "count": 170,
+      "corrupt": 0,
+      "min_size": 3420,
+      "max_size": 14036,
+      "avg_size_kb": 6.66,
+      "total_bytes": 1159501
+    },
+    "X": {
+      "count": 174,
+      "corrupt": 0,
+      "min_size": 3280,
+      "max_size": 13949,
+      "avg_size_kb": 6.43,
+      "total_bytes": 1145926
+    },
+    "Y": {
+      "count": 174,
+      "corrupt": 0,
+      "min_size": 2811,
+      "max_size": 13699,
+      "avg_size_kb": 6.47,
+      "total_bytes": 1152633
+    },
+    "Z": {
+      "count": 174,
+      "corrupt": 0,
+      "min_size": 2043,
+      "max_size": 14064,
+      "avg_size_kb": 5.75,
+      "total_bytes": 1024058
+    }
+  }
+}

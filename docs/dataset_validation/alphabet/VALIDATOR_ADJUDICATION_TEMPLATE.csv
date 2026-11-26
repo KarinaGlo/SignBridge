@@ -1,0 +1,37 @@
+sample_id,stimulus_image_path,original_filename,validator_A_decision,validator_A_letter,validator_B_decision,validator_B_letter,adjudication_required,expert_final_letter,expert_final_decision,adjudication_reason,adjudicator_id,adjudication_date,final_ground_truth_eligible,final_qc_status
+VAL-REV-001,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-001.jpg,K_Polos Terang_Samsung_A55.jpg,AMBIGUOUS,P,AMBIGUOUS,K,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-002,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-002.jpg,C_Baju_Xiaomi_MI T10.jpg,AMBIGUOUS,C,AMBIGUOUS,C,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-003,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-003.jpg,Y_Gelap_Apple_Iphone XS.jpg,IDENTIFIED,Y,IDENTIFIED,Y,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-004,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-004.jpg,R_Polos terang_Infinix_Hot 11s NFC.jpg,AMBIGUOUS,C,IDENTIFIED,C,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-005,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-005.jpg,M_Background Bebas_Apple_Iphone 15.jpg,IDENTIFIED,M,AMBIGUOUS,M,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-006,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-006.jpg,O_Bebas_Redmi_Note 12 Pro.jpg,IDENTIFIED,O,IDENTIFIED,O,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-007,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-007.jpg,D_Gelap_Samsung_A22.jpg,AMBIGUOUS,D,AMBIGUOUS,O,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-008,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-008.jpg,N_Bebas_Infinix_Note 30.jpg,IDENTIFIED,N,IDENTIFIED,N,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-009,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-009.jpg,J_Bebas_Samsung_Galaxy A32 5G.jpg,IDENTIFIED,I,AMBIGUOUS,I,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-010,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-010.jpg,E_Polos Terang_Samsung_A32.jpg,AMBIGUOUS,E,IDENTIFIED,W,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-011,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-011.jpg,F_Polos Terang_Samsung_Galaxy M14 5G.jpg,IDENTIFIED,F,IDENTIFIED,F,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-012,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-012.jpg,N_Bebas_Infinix_Hot 11s NFC.jpg,IDENTIFIED,N,IDENTIFIED,N,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-013,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-013.jpg,T_Polos Terang_ROG_Phone5.jpg,AMBIGUOUS,T,AMBIGUOUS,T,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-014,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-014.jpg,20240509_183416.jpg,AMBIGUOUS,E,IDENTIFIED,W,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-015,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-015.jpg,B_Bebas_Apple_Iphone 12.JPG,IDENTIFIED,B,IDENTIFIED,B,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-016,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-016.jpg,Z_Polos Terang_Samsung_A21S.jpeg,IDENTIFIED,Z,AMBIGUOUS,Z,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-017,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-017.jpg,O_Background Gelap_Iphone 14 Pro.jpg,IDENTIFIED,O,UNDETERMINABLE,O,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-018,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-018.jpg,C_Background Gelap_Iphone 14 Pro.jpg,IDENTIFIED,C,UNDETERMINABLE,C,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-019,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-019.jpg,Z_Background Gelap_Iphone 14 Pro.jpg,UNDETERMINABLE,Z,AMBIGUOUS,,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-020,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-020.jpg,V_Polos Terang_Samsung_A21S.jpeg,IDENTIFIED,V,UNDETERMINABLE,B,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-021,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-021.jpg,B_Background Gelap_Iphone 14 Pro.jpg,IDENTIFIED,B,UNDETERMINABLE,B,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-022,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-022.jpg,C_Gelap_Apple_Iphone XS.jpg,IDENTIFIED,C,IDENTIFIED,C,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-023,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-023.jpg,C_Polos Gelap_Vivo_V23 5G.jpg,IDENTIFIED,C,IDENTIFIED,C,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-024,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-024.jpg,D_Background Gelap_Iphone 14 Pro.jpg,IDENTIFIED,D,UNDETERMINABLE,D,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-025,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-025.jpg,H_Terang_Iph_Iph15.jpg,IDENTIFIED,D,AMBIGUOUS,H,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-026,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-026.jpg,Z_Polos Terang_Oppo_Reno 11f.jpg,IDENTIFIED,Z,UNDETERMINABLE,Z,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-027,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-027.jpg,Z_Terang_Apple_Iphone XS.jpg,UNDETERMINABLE,,IDENTIFIED,S,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-028,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-028.jpg,O_Bebas_Oppo_A Series.jpg.jpg,IDENTIFIED,O,AMBIGUOUS,O,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-029,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-029.jpg,O_Bebas_Iphone_14 Pro.jpg,IDENTIFIED,O,IDENTIFIED,O,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-030,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-030.jpg,M_Polos Terang_Samsung_A32.jpg,UNDETERMINABLE,M,IDENTIFIED,M,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-031,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-031.jpg,U_Body Red_Xiaomi_Redmi Note 9.jpg,UNDETERMINABLE,U,AMBIGUOUS,C,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-032,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-032.jpg,A_Baju_Vivo_V23 5G.jpg,IDENTIFIED,A,IDENTIFIED,A,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-033,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-033.jpg,B_Baju_Xiaomi _Note 8 Pro.jpg,AMBIGUOUS,,IDENTIFIED,B,TRUE,,,,,,FALSE,QC_REQUIRES_ADJUDICATION
+VAL-REV-034,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-034.jpg,L_Background Baju (Garis)_Samsung_A53.jpg,AMBIGUOUS,L,AMBIGUOUS,L,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW
+VAL-REV-035,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-035.jpg,O_Background _Bebas_POCO_F4.jpg,IDENTIFIED,O,IDENTIFIED,O,FALSE,,,,,,FALSE,QC_PENDING
+VAL-REV-036,docs/validation_p2/phase_2b_1/stimulus_images/VAL-REV-036.jpg,Y_Background Baju (Garis)_Samsung_A53.jpg,AMBIGUOUS,Y,AMBIGUOUS,Y,TRUE,,,,,,FALSE,QC_REQUIRES_IMAGE_REVIEW

@@ -119,13 +119,27 @@ function drawGroupBoundingBox(ctx, points, label, color, pad = 12, isFlipped = f
   ctx.restore();
 }
 
-export function drawSkeleton86(ctx, kp86, width, height, { mirror = false, hudText = "", isMirroredCanvas = undefined } = {}) {
+export function drawSkeleton86(
+  ctx,
+  kp86,
+  width,
+  height,
+  { mirror = false, hudText = "", isMirroredCanvas = undefined, clear = true } = {}
+) {
   if (!ctx || !kp86) return;
-  ctx.clearRect(0, 0, width, height);
+  if (clear) {
+    ctx.clearRect(0, 0, width, height);
+  }
 
   const isFlipped = isMirroredCanvas !== undefined
     ? isMirroredCanvas
-    : Boolean(ctx.canvas && (ctx.canvas.id === "camera-canvas" || ctx.canvas.closest?.(".camera-viewport-wrap")));
+    : Boolean(
+        ctx.canvas &&
+        (ctx.canvas.id === "camera-canvas" ||
+         ctx.canvas.id === "rec-camera-preview" ||
+         ctx.canvas.closest?.(".camera-viewport-wrap") ||
+         ctx.canvas.closest?.(".rec-preview-box"))
+      );
 
   const toXY = (pt) => {
     if (!pt || !Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) return null;

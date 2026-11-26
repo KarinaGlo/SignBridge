@@ -1,0 +1,3 @@
+# Quarantine Directory for Malformed, Incomplete, or Corrupted Validator Responses
+# Files placed here are preserved for audit purposes and must not be used in IRR calculations.
+

@@ -64,6 +64,14 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 }
 
 export function speakText(text, lang = "id-ID") {
+  // Mode Perekam Dataset (P0-D): Wajib hening tanpa TTS/chime agar tidak mengotori mikrofon
+  if (typeof window !== "undefined" && window.signBridgeApp?.currentAppTab === "panel-recorder") {
+    if (window.signbridgeDebug) {
+      window.signbridgeDebug.lastTTS = { text: text || "", status: "muted_in_recorder_panel", timestamp: Date.now() };
+    }
+    return false;
+  }
+
   if (!text || typeof window === "undefined") {
     if (typeof window !== "undefined" && window.signbridgeDebug) {
       window.signbridgeDebug.lastTTS = { text: "", status: "skipped_empty_text", timestamp: Date.now() };

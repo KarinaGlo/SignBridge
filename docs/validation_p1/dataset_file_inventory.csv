@@ -1,0 +1,7 @@
+category,location,count,total_size_mb,format,resolution,status
+Raw Images (JPG),data/raw/image/bisindo_alphabet/*/*.jpg,4154,40.85,JPEG,224x224 (variable pre-crop),VERIFIED_ACCESSIBLE
+Raw Images (JPEG),data/raw/image/bisindo_alphabet/*/*.jpeg,312,3.15,JPEG,224x224 (variable pre-crop),VERIFIED_ACCESSIBLE
+Processed Images (JPG),data/processed/bisindo_alphabet/*/*.jpg,4462,36.88,JPEG RGB,224x224,VERIFIED_ACCESSIBLE
+Processed Tensors (NPY),data/processed/bisindo_alphabet/*/*.npy,4462,658.59,NumPy uint8,224x224x3,VERIFIED_ACCESSIBLE
+Metadata & Manifests,data/processed/bisindo_alphabet/*.csv,2,0.81,CSV,N/A,VERIFIED_ACCESSIBLE
+Raw Metadata & Summary,data/raw/image/bisindo_alphabet/*.*,4,0.11,JSON/CSV,N/A,VERIFIED_ACCESSIBLE

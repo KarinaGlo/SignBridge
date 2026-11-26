@@ -1,0 +1,761 @@
+{
+  "overall_status": "NOT STARTED",
+  "status_description": "Belum ada foto eksternal fisik yang dikumpulkan maupun didaftarkan di manifest.",
+  "timestamp_utc": "2026-11-16T15:43:29.842126+00:00",
+  "manifest_info": {
+    "actual_manifest_path": "D:\\SEMESTER 5\\ML\\Projek_1\\data\\external\\bisindo_validation\\external_manifest.csv",
+    "actual_manifest_exists": true,
+    "template_manifest_path": "D:\\SEMESTER 5\\ML\\Projek_1\\data\\external\\bisindo_validation\\external_manifest_template.csv",
+    "template_manifest_exists": true,
+    "active_manifest_path": "D:\\SEMESTER 5\\ML\\Projek_1\\data\\external\\bisindo_validation\\external_manifest.csv",
+    "manifest_mode": "ACTUAL_MANIFEST",
+    "status_label": "TERSEDIA & AKTIF (external_manifest.csv ditemukan)"
+  },
+  "total_target": 780,
+  "total_valid_collected": 0,
+  "total_shortfall": 780,
+  "progress_percentage": 0.0,
+  "total_disk_images": 0,
+  "total_manifest_raw_rows": 0,
+  "total_manifest_data_rows": 0,
+  "verified_consents_count": 0,
+  "anomalies": {
+    "unconsented_count": 0,
+    "missing_disk_count": 0,
+    "unregistered_disk_count": 0,
+    "duplicate_count": 0,
+    "invalid_signer_count": 0,
+    "invalid_label_count": 0
+  },
+  "signer_progress": {
+    "EXT_S01": {
+      "collected": 0,
+      "target": 260,
+      "shortfall": 260,
+      "pct": 0.0
+    },
+    "EXT_S02": {
+      "collected": 0,
+      "target": 260,
+      "shortfall": 260,
+      "pct": 0.0
+    },
+    "EXT_S03": {
+      "collected": 0,
+      "target": 260,
+      "shortfall": 260,
+      "pct": 0.0
+    }
+  },
+  "class_progress": {
+    "A": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "B": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "C": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "D": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "E": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "F": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "G": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "H": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "I": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "J": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "K": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "L": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "M": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "N": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "O": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "P": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "Q": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "R": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "S": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "T": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "U": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "V": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "W": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "X": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "Y": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    },
+    "Z": {
+      "collected": 0,
+      "target": 30,
+      "shortfall": 30,
+      "pct": 0.0
+    }
+  },
+  "incomplete_combinations_count": 78,
+  "incomplete_combinations": [
+    {
+      "signer_id": "EXT_S01",
+      "label": "A",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "B",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "C",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "D",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "E",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "F",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "G",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "H",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "I",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "J",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "K",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "L",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "M",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "N",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "O",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "P",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "Q",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "R",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "S",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "T",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "U",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "V",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "W",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "X",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "Y",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S01",
+      "label": "Z",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "A",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "B",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "C",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "D",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "E",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "F",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "G",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "H",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "I",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "J",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "K",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "L",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "M",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "N",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "O",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "P",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "Q",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "R",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "S",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "T",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "U",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "V",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "W",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "X",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "Y",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S02",
+      "label": "Z",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "A",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "B",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "C",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "D",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "E",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "F",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "G",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "H",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "I",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "J",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "K",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "L",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "M",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "N",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "O",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "P",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "Q",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "R",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "S",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "T",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "U",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "V",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "W",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "X",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "Y",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    },
+    {
+      "signer_id": "EXT_S03",
+      "label": "Z",
+      "collected": 0,
+      "target": 10,
+      "deficit": 10
+    }
+  ],
+  "unregistered_disk_files": [],
+  "unconsented_records": [],
+  "missing_disk_records": [],
+  "duplicate_records": []
+}

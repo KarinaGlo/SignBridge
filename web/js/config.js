@@ -246,3 +246,43 @@ export const FINGERSPELL_DB = [
   { letter: "Y", guide: "Ibu jari dan jari kelingking dibuka lebar, tiga jari tengah mengepal", example_id: "Ya / Yang", example_fil: "Yung / Oo" },
   { letter: "Z", guide: "Jari telunjuk lurus menggambar garis zig-zag huruf Z di udara", example_id: "Zaman / Zona", example_fil: "Zero" }
 ];
+
+/**
+ * Prompt Konteks Percakapan Kelas Inklusif (P0-D).
+ * Digunakan untuk mengisi kalimat konteks dialog tanpa menyalin nama label target
+ * secara langsung (mencegah jalan pintas teks / shortcut leakage pada M6).
+ */
+export const CLASSROOM_CONTEXT_PROMPTS = {
+  AIR: "Bolehkah saya izin minum di luar kelas sebentar?",
+  BELAJAR: "Mari kita buka buku modul halaman lima belas bersama.",
+  CARI: "Apakah ada yang melihat spidol di meja pengajar?",
+  HARI: "Jadwal praktikum inklusif diadakan pada pekan ini.",
+  INGAT: "Jangan lupa kumpulkan tugas sebelum bel berbunyi.",
+  LAGI: "Mohon diulang penjelasannya sekali lagi Bu guru.",
+  MAAF: "Permisi saya terlambat karena kendala di jalan.",
+  MAKAN: "Waktu istirahat santap siang sudah dimulai sekarang.",
+  MOTOR: "Kendaraan siswa diparkir rapi di halaman depan.",
+  SAYA: "Perkenalkan nama siswa baru yang duduk di barisan depan.",
+  TERIMA_KASIH: "Bantuan Anda sangat bermanfaat untuk kelompok kami.",
+  TULI: "Teman kita menggunakan bahasa isyarat untuk berkomunikasi.",
+  APA: "Materi pokok yang akan kita bahas di pertemuan kedua?",
+  SIAPA: "Ketua kelompok yang akan mempresentasikan hasil kerja?",
+  KAPAN: "Batas waktu pengumpulan lembar evaluasi proyek kita?",
+  DIMANA: "Ruang laboratorium komputer ada di lantai berapa?",
+  MENGAPA: "Faktor penyebab perubahan reaksi dalam percobaan kimia?",
+  BAGAIMANA: "Langkah menyelesaikan soal pembagian di papan tulis?",
+  MERAH: "Tandai catatan penting menggunakan pena bertinta terang.",
+  KUNING: "Sampul modul praktikum semester ini berwarna cerah.",
+  HIJAU: "Papan tulis di ruang kelas sudah dibersihkan rapi.",
+  HITAM: "Tinta pengisi alat tulis di depan kelas habis.",
+  DENGAR: "Harap tenang agar instruksi guru tersampaikan jelas.",
+  BERANGKAT: "Rombongan studi lapangan berkumpul pukul tujuh pagi.",
+  DATANG: "Semua peserta seminar wajib hadir tepat waktu.",
+  TEMAN: "Mari bekerja sama dengan rekan kelompok sebangku.",
+  KELUARGA: "Pertemuan wali murid dijadwalkan akhir pekan ini.",
+  RUMAH: "Kerjakan latihan soal mandiri setelah pulang sekolah.",
+  PAGI: "Selamat menyambut sesi pembelajaran jam pertama.",
+  SIANG: "Udara ruangan cukup hangat setelah jam istirahat.",
+  SORE: "Kegiatan ekstrakurikuler selesai menjelang petang hari.",
+  MALAM: "Persiapkan perlengkapan belajar sebelum istirahat tidur."
+};

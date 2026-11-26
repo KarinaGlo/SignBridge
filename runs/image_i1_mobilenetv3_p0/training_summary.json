@@ -1,0 +1,251 @@
+{
+  "experiment_id": "image_i1_mobilenetv3_p0",
+  "model_architecture": "MobileNetV3SmallClassifier",
+  "parameter_count": 265826,
+  "parameter_millions": 0.266,
+  "total_epochs": 25,
+  "best_epoch": 12,
+  "dataset_splits": {
+    "train_samples": 3123,
+    "val_samples": 669,
+    "test_samples": 670,
+    "total_samples": 4462
+  },
+  "best_validation_metrics": {
+    "accuracy_pct": 11.21,
+    "macro_f1_pct": 11.21,
+    "train_loss": 1.0496,
+    "val_loss": 4.2135
+  },
+  "final_test_metrics": {
+    "accuracy_pct": 7.61,
+    "macro_precision_pct": 8.23,
+    "macro_recall_pct": 7.6,
+    "macro_f1_pct": 7.5,
+    "weighted_f1_pct": 7.49
+  },
+  "inference_benchmark_cpu": {
+    "mean_latency_ms": 8.32,
+    "min_latency_ms": 6.33,
+    "max_latency_ms": 13.18,
+    "p95_latency_ms": 10.4,
+    "throughput_fps": 120.2
+  },
+  "comparison_with_old_model": {
+    "old_model_accuracy_pct": 3.58,
+    "new_model_accuracy_pct": 7.61,
+    "accuracy_improvement_pct": 4.03,
+    "old_model_macro_f1_pct": 0.27,
+    "new_model_macro_f1_pct": 7.5,
+    "f1_improvement_pct": 7.23,
+    "old_model_latency_ms": 12.85,
+    "new_model_latency_ms": 8.32,
+    "throughput_fps": 120.2
+  },
+  "quality_checks": {
+    "class_collapse_detected": false,
+    "overfitting_detected": true,
+    "overfitting_details": "Train loss turun ke 0.57 sementara Val loss naik ke 4.32 karena dilatih from scratch tanpa ImageNet pre-trained weights.",
+    "zero_recall_classes_count": 3,
+    "top_misclassified_pairs": [
+      {
+        "pair": "N -> Y",
+        "count": 6
+      },
+      {
+        "pair": "V -> J",
+        "count": 6
+      },
+      {
+        "pair": "A -> X",
+        "count": 5
+      },
+      {
+        "pair": "I -> L",
+        "count": 5
+      },
+      {
+        "pair": "I -> R",
+        "count": 5
+      },
+      {
+        "pair": "J -> E",
+        "count": 5
+      },
+      {
+        "pair": "M -> Y",
+        "count": 5
+      },
+      {
+        "pair": "V -> Y",
+        "count": 5
+      },
+      {
+        "pair": "B -> T",
+        "count": 4
+      },
+      {
+        "pair": "C -> R",
+        "count": 4
+      }
+    ]
+  },
+  "classification_report_per_class": {
+    "A": {
+      "precision": 9.52,
+      "recall": 8.33,
+      "f1_score": 8.89,
+      "support": 24.0
+    },
+    "B": {
+      "precision": 22.22,
+      "recall": 8.0,
+      "f1_score": 11.76,
+      "support": 25.0
+    },
+    "C": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 25.0
+    },
+    "D": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 26.0
+    },
+    "E": {
+      "precision": 17.65,
+      "recall": 12.0,
+      "f1_score": 14.29,
+      "support": 25.0
+    },
+    "F": {
+      "precision": 7.69,
+      "recall": 7.69,
+      "f1_score": 7.69,
+      "support": 26.0
+    },
+    "G": {
+      "precision": 15.0,
+      "recall": 23.08,
+      "f1_score": 18.18,
+      "support": 26.0
+    },
+    "H": {
+      "precision": 6.25,
+      "recall": 3.85,
+      "f1_score": 4.76,
+      "support": 26.0
+    },
+    "I": {
+      "precision": 7.69,
+      "recall": 7.69,
+      "f1_score": 7.69,
+      "support": 26.0
+    },
+    "J": {
+      "precision": 3.45,
+      "recall": 4.0,
+      "f1_score": 3.7,
+      "support": 25.0
+    },
+    "K": {
+      "precision": 3.77,
+      "recall": 7.69,
+      "f1_score": 5.06,
+      "support": 26.0
+    },
+    "L": {
+      "precision": 9.38,
+      "recall": 11.54,
+      "f1_score": 10.34,
+      "support": 26.0
+    },
+    "M": {
+      "precision": 27.27,
+      "recall": 11.54,
+      "f1_score": 16.22,
+      "support": 26.0
+    },
+    "N": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 26.0
+    },
+    "O": {
+      "precision": 2.86,
+      "recall": 3.85,
+      "f1_score": 3.28,
+      "support": 26.0
+    },
+    "P": {
+      "precision": 5.0,
+      "recall": 3.85,
+      "f1_score": 4.35,
+      "support": 26.0
+    },
+    "Q": {
+      "precision": 11.43,
+      "recall": 15.38,
+      "f1_score": 13.11,
+      "support": 26.0
+    },
+    "R": {
+      "precision": 8.57,
+      "recall": 11.54,
+      "f1_score": 9.84,
+      "support": 26.0
+    },
+    "S": {
+      "precision": 7.69,
+      "recall": 3.85,
+      "f1_score": 5.13,
+      "support": 26.0
+    },
+    "T": {
+      "precision": 5.88,
+      "recall": 7.69,
+      "f1_score": 6.67,
+      "support": 26.0
+    },
+    "U": {
+      "precision": 8.0,
+      "recall": 7.69,
+      "f1_score": 7.84,
+      "support": 26.0
+    },
+    "V": {
+      "precision": 8.7,
+      "recall": 7.69,
+      "f1_score": 8.16,
+      "support": 26.0
+    },
+    "W": {
+      "precision": 11.11,
+      "recall": 11.54,
+      "f1_score": 11.32,
+      "support": 26.0
+    },
+    "X": {
+      "precision": 3.85,
+      "recall": 3.85,
+      "f1_score": 3.85,
+      "support": 26.0
+    },
+    "Y": {
+      "precision": 4.65,
+      "recall": 7.69,
+      "f1_score": 5.8,
+      "support": 26.0
+    },
+    "Z": {
+      "precision": 6.45,
+      "recall": 7.69,
+      "f1_score": 7.02,
+      "support": 26.0
+    }
+  }
+}
