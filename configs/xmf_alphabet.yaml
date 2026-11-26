@@ -1,0 +1,36 @@
+# configs/xmf_gloss.yaml — SignBridge-XMF tugas GLOSS (26 huruf A-Z, foto tervalidasi Kawan Tuli Soloraya)
+experiment_id: "XMF_alphabet"
+task: alphabet
+seed: 42
+protocol: sd                 # sd = split grup perangkat | final = model deploy
+processed_csv: "data/xmf/processed/alphabet_processed.csv"
+audio_bank: "data/xmf/bank/alphabet_audio.npz"
+num_workers: 2
+cache: false                 # true jika RAM >= 8 GB (mempercepat epoch)
+model:
+  d_model: 128
+  nhead: 4
+  fusion_layers: 2
+  dropout: 0.15
+  pretrained_image: true     # MobileNetV3-Small ImageNet (diunduh otomatis oleh torchvision)
+  freeze_image_blocks: 4     # bekukan 4 blok awal backbone citra (data kecil, lebih stabil & cepat)
+training:
+  batch_size: 48
+  learning_rate: 0.0005
+  backbone_lr_mult: 0.2
+  weight_decay: 0.02
+  max_epochs: 40
+  patience: 12
+  label_smoothing: 0.1
+  lambda_proto: 0.5          # bobot loss prototipe bersama (ruang konsep lintas-modal)
+# Peluang subset modalitas per sampel saat training (V=video, I=citra, A=audio, T=teks).
+# Didominasi kamera-saja karena itu kondisi nyata di browser; A/T melatih arah Dengar->Tuli.
+modality_subsets:
+  VI: 0.35
+  V: 0.12
+  I: 0.08
+  A: 0.10
+  T: 0.08
+  VIA: 0.09
+  VIT: 0.06
+  VIAT: 0.12
