@@ -19,6 +19,7 @@ import { speakText, unlockSpeechAudio, SpeechListener } from "./speech.js";
 import { VisionManager, drawSkeleton86, generateReferenceSignKeypoints } from "./vision.js";
 import { SignRecognizer, SIGN_STATE, isInSigningSpace, checkCameraFraming } from "./recognizer.js";
 import { FingerspellRecognizer } from "./fingerspell.js";
+import { XmfFrameStore, XmfRecognizer, XmfAlphabet, XmfConceptQuery } from "./xmf.js";
 import { RoomManager } from "./room.js";
 import { MultimodalCapture, MultimodalRecorder } from "./recorder.js";
 
@@ -38,9 +39,17 @@ class SignBridgeApp {
     this.captionSizes = ["normal", "large", "xlarge"];
     this.lastSpokenAt = 0;
 
-    this.recognizer = new SignRecognizer({
+    // SignBridge-XMF: satu model fusion 4 modalitas. Snapshot kamera disimpan per frame keypoint
+    // agar citra yang masuk model berasal dari klip YANG SAMA dengan deret keypoint (video).
+    this.xmfFrames = new XmfFrameStore({ videoEl: () => document.getElementById("camera-video") });
+    this.recognizer = new XmfRecognizer({
+      frameStore: this.xmfFrames,
       onStateChange: (info) => this.updateStateBadge(info),
       onPrediction: (pred) => this.handleSignPrediction(pred)
+    });
+    this.xmfAlphabet = new XmfAlphabet({
+      frameStore: this.xmfFrames,
+      onPrediction: (pred) => this.handleAlphabetPrediction(pred)
     });
     this.fingerspeller = new FingerspellRecognizer({
       onPrediction: (pred) => this.handleAlphabetPrediction(pred)
@@ -83,10 +92,22 @@ class SignBridgeApp {
 
     const recStatus = await this.recognizer.init();
     await this.fingerspeller.init();
+    await this.xmfAlphabet.init();
+    if (this.recognizer.engine === "xmf") {
+      // Arah Dengar -> Tuli lewat ruang konsep yang sama (uji di console: signbridgeXmf.fromText("selamat pagi"))
+      const q = new XmfConceptQuery(this.recognizer.xmf);
+      window.signbridgeXmf = {
+        fromText: (t) => q.fromText(t),
+        fromMic: async (sec = 2.5) => q.fromSpeech(await XmfConceptQuery.recordMic(sec)),
+        recognizer: this.recognizer, alphabet: this.xmfAlphabet
+      };
+    }
     const engineText = document.getElementById("engine-status-text");
     const enginePill = document.getElementById("engine-status-pill");
     if (engineText) {
-      if (recStatus.ready && recStatus.engine === "onnx-web") {
+      if (recStatus.ready && recStatus.engine === "onnx-xmf") {
+        engineText.textContent = "ONNX Web XMF Fusion (Video+Citra, 32 WL-BISINDO)";
+      } else if (recStatus.ready && recStatus.engine === "onnx-web") {
         engineText.textContent = "ONNX Web M0 (Aktif - 32 WL-BISINDO)";
       } else {
         engineText.textContent = recStatus.error ? `Model M0 Standby: ${recStatus.error}` : "Model AI M0 Standby";
@@ -314,6 +335,8 @@ class SignBridgeApp {
       videoEl,
       canvasEl,
       onFrameKeypoints: ({ kp86, rightHand21, leftHand21, hasVisibleHand }) => {
+        // XMF: simpan snapshot kamera untuk frame ini (dipasangkan dengan kp86 yang sama)
+        if (kp86 && this.currentAppTab !== "panel-recorder") this.xmfFrames.capture(kp86);
         // Perekam Dataset Multimodal: tampung frame asli selama klip direkam
         if (this.capture && this.capture.active) this.capture.pushFrame(kp86, rightHand21, leftHand21);
         const now = performance.now();
@@ -392,36 +415,24 @@ class SignBridgeApp {
           }
         }
 
-        const activeHand = rightHand21 || leftHand21;
-        if (this.recognitionMode === "fingerspell") {
-          this.fingerspeller.pushHandFrame(activeHand);
-        } else if (this.recognitionMode === "video") {
-          this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
-        } else {
-          // Mode HIBRID (Default):
-          // 1. Eksekusi pengenal isyarat kata (BISINDO dinamis)
-          this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
         // Evaluasi Pengenalan Isyarat & Ejaan Jari (HANYA AKTIF di luar panel perekam dataset)
         if (this.currentAppTab !== "panel-recorder") {
           const activeHand = rightHand21 || leftHand21;
+          const spell = () => {
+            // XMF alfabet (crop tangan + landmark dari frame yang sama); fallback aturan geometri lama
+            if (this.xmfAlphabet?.ready) this.xmfAlphabet.push(kp86);
+            else this.fingerspeller.pushHandFrame(activeHand);
+          };
           if (this.recognitionMode === "fingerspell") {
-            this.fingerspeller.pushHandFrame(activeHand);
+            spell();
           } else if (this.recognitionMode === "video") {
             this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
           } else {
             // Mode HIBRID (Default):
-            // 1. Eksekusi pengenal isyarat kata (BISINDO dinamis)
+            // 1. Pengenal isyarat kata (BISINDO dinamis) — XMF fusion video+citra
             this.recognizer.pushFrame(kp86, { hasVisibleHand, timestamp: now });
-
-          // 2. Jika pengenal kata sedang IDLE dan ada satu tangan terangkat di ruang isyarat,
-          //    evaluasi ejaan abjad jari 26 huruf (A-Z)
-          if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) {
-            this.fingerspeller.pushHandFrame(activeHand);
-            // 2. Jika pengenal kata sedang IDLE dan ada satu tangan terangkat di ruang isyarat,
-            //    evaluasi ejaan abjad jari 26 huruf (A-Z)
-            if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) {
-              this.fingerspeller.pushHandFrame(activeHand);
-            }
+            // 2. Jika pengenal kata IDLE dan ada tangan terangkat, evaluasi ejaan jari A-Z
+            if (this.recognizer.state === SIGN_STATE.IDLE && activeHand) spell();
           }
         }
       }
@@ -639,6 +650,10 @@ class SignBridgeApp {
       <div class="hud-row">
         <span class="hud-label">M0 Model / Labels:</span>
         <span class="hud-val ${m0ReadyClass}">${m0.ready ? 'READY (ONNX)' : 'FAILED'} / ${this.recognizer?.labels?.length || 0}</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">XMF Fusion w (V/I/A/T):</span>
+        <span class="hud-val">${this.recognizer?.lastFusion ? Object.values(this.recognizer.lastFusion.weights).map((w) => w.toFixed(2)).join(" / ") : "-"}</span>
       </div>
       <div class="hud-row">
         <span class="hud-label">Fingerspell:</span>
