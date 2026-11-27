@@ -28,6 +28,11 @@ Contoh:
 
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("GLOG_minloglevel", "2")      # senyapkan log W0000/I0000 MediaPipe
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import argparse
 import csv
 import json
@@ -93,7 +98,10 @@ def _mp():
         import cv2  # noqa: F401
         import mediapipe as mp
     except ImportError as e:  # pragma: no cover
-        raise SystemExit("Butuh mediapipe==0.10.11 dan opencv-python (pip install -r requirements-xmf.txt)") from e
+        raise SystemExit("Butuh mediapipe==0.10.21 dan opencv-python (pip install -r requirements-xmf.txt)") from e
+    if not hasattr(mp, "solutions"):
+        raise SystemExit(f"mediapipe {getattr(mp, '__version__', '?')} tidak punya API mp.solutions (dihapus di versi "
+                         "baru). Pasang versi yang dipakai proyek: pip install 'mediapipe==0.10.21'")
     return mp
 
 
@@ -249,6 +257,43 @@ def process_alphabet(row: Dict, out_dir: Path, bank_path: Optional[str]) -> Dict
 
 
 # ---------------------------------------------------------------------------
+def _write_csv(proc_csv: Path, done: Dict[str, Dict]) -> None:
+    tmp = proc_csv.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=PROCESSED_COLUMNS)
+        w.writeheader()
+        for sid in sorted(done):
+            w.writerow({c: done[sid].get(c, "") for c in PROCESSED_COLUMNS})
+    tmp.replace(proc_csv)
+
+
+def _recover_from_npz(task: str, row: Dict, out_dir: Path) -> Optional[Dict]:
+    """Bangun ulang baris CSV dari .npz yang sudah ada + manifest (tanpa MediaPipe)."""
+    sid = row["sample_id"]
+    npz = out_dir / (f"{sid}.npz" if task == "gloss" else sid.replace("/", "__") + ".npz")
+    if not npz.exists():
+        return None
+    try:
+        with np.load(npz) as z:
+            mask = z["mask"]
+    except Exception:  # noqa: BLE001  (file setengah jadi saat terputus -> proses ulang)
+        npz.unlink(missing_ok=True)
+        return None
+    rel = str(npz.relative_to(ROOT))
+    if task == "gloss":
+        n_citra = len([p for p in row["citra_paths"].split(";") if p])
+        src = "citra" if n_citra >= SHAPES["gloss"].image_frames else ("video_fallback" if mask[0] else "missing")
+        return {"sample_id": sid, "task": "gloss", "label": int(row["label"]), "class_name": row["gloss"],
+                "signer": row["signer"], "group": f"signer{row['signer']}", "npz_path": rel,
+                "has_video": int(mask[0]), "has_image": int(mask[1]), "has_audio": int(mask[2]), "has_text": 1,
+                "image_source": src, "split_sd": row["split_sd"], "split_si": row["split_si"],
+                "split_final": row["split_final"], "split": row["split_sd"]}
+    return {"sample_id": sid, "task": "alphabet", "label": int(row["label"]), "class_name": row["letter"],
+            "signer": "", "group": row["group"], "npz_path": rel, "has_video": int(mask[0]), "has_image": 1,
+            "has_audio": int(mask[2]), "has_text": 1, "image_source": "hand_crop" if mask[0] else "center_crop",
+            "split_sd": row["split"], "split_si": row["split"], "split_final": row["split_final"], "split": row["split"]}
+
+
 def run(task: str, manifest: Path, out_root: Path, bank: Optional[Path], workers: int,
         limit: Optional[int], refresh_citra: bool) -> Path:
     out_dir = out_root / task
@@ -264,6 +309,16 @@ def run(task: str, manifest: Path, out_root: Path, bank: Optional[Path], workers
         with proc_csv.open(encoding="utf-8") as f:
             done = {r["sample_id"]: r for r in csv.DictReader(f) if (ROOT / r["npz_path"]).exists()}
 
+    recovered = 0
+    for r in rows:
+        if r["sample_id"] not in done:
+            rec = _recover_from_npz(task, r, out_dir)
+            if rec is not None:
+                done[r["sample_id"]] = rec
+                recovered += 1
+    if recovered:
+        print(f"[preprocess] {recovered} sampel dipulihkan dari .npz yang sudah ada (run sebelumnya terputus)")
+
     todo = []
     for r in rows:
         prev = done.get(r["sample_id"])
@@ -276,6 +331,18 @@ def run(task: str, manifest: Path, out_root: Path, bank: Optional[Path], workers
 
     t0, errors = time.time(), []
     bank_s = str(bank) if bank else None
+    if todo:                                   # cek cepat 1 sampel dulu: error sistemik langsung terlihat
+        try:
+            done[todo[0]["sample_id"]] = fn(todo[0], out_dir, bank_s)
+            todo = todo[1:]
+        except SystemExit:
+            raise
+        except Exception as e:  # noqa: BLE001
+            import traceback
+
+            traceback.print_exc()
+            raise SystemExit(f"[preprocess] sampel pertama ({todo[0]['sample_id']}) gagal: {e}\n"
+                             "Perbaiki error di atas dulu; preprocessing dihentikan agar tidak gagal massal.")
     if workers > 1:
         with ProcessPoolExecutor(workers) as ex:
             futs = {ex.submit(fn, r, out_dir, bank_s): r["sample_id"] for r in todo}
@@ -285,6 +352,7 @@ def run(task: str, manifest: Path, out_root: Path, bank: Optional[Path], workers
                 except Exception as e:  # noqa: BLE001
                     errors.append((futs[fu], str(e)))
                 if i % 50 == 0:
+                    _write_csv(proc_csv, done)
                     print(f"  {i}/{len(todo)}  {time.time() - t0:.0f}s")
     else:
         for i, r in enumerate(todo, 1):
@@ -293,17 +361,20 @@ def run(task: str, manifest: Path, out_root: Path, bank: Optional[Path], workers
             except Exception as e:  # noqa: BLE001
                 errors.append((r["sample_id"], str(e)))
             if i % 50 == 0:
+                _write_csv(proc_csv, done)
                 print(f"  {i}/{len(todo)}  {time.time() - t0:.0f}s")
 
-    with proc_csv.open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=PROCESSED_COLUMNS)
-        w.writeheader()
-        for sid in sorted(done):
-            w.writerow({c: done[sid].get(c, "") for c in PROCESSED_COLUMNS})
+    _write_csv(proc_csv, done)
     rep = {"task": task, "n": len(done), "errors": errors[:50], "n_errors": len(errors),
            "seconds": round(time.time() - t0, 1)}
     (out_root / f"{task}_preprocess_report.json").write_text(json.dumps(rep, indent=2), encoding="utf-8")
     print(f"[preprocess] selesai: {len(done)} rekaman, {len(errors)} error -> {proc_csv}")
+    if errors:
+        from collections import Counter
+
+        for msg, n in Counter(e for _, e in errors).most_common(3):
+            print(f"  {n}x  {msg[:300]}")
+        print(f"  daftar lengkap: {out_root / f'{task}_preprocess_report.json'}")
     return proc_csv
 
 
