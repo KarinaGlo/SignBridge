@@ -187,6 +187,12 @@ class LogMel(nn.Module):
         self.register_buffer("fb", torch.tensor(mel_filterbank(AUDIO_SR, n_fft, n_mels), dtype=torch.float32))
 
     def forward(self, wav: torch.Tensor) -> torch.Tensor:                   # [B, N] -> [B, 64, 248]
+        if torch.is_autocast_enabled() and wav.is_cuda:   # spektrum daya bisa > 65504 -> overflow di fp16
+            with torch.autocast("cuda", enabled=False):
+                return self._forward(wav.float())
+        return self._forward(wav)
+
+    def _forward(self, wav: torch.Tensor) -> torch.Tensor:
         x = wav.unsqueeze(1)
         re = F.conv1d(x, self.wcos, stride=self.hop)
         im = F.conv1d(x, self.wsin, stride=self.hop)

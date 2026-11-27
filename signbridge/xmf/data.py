@@ -214,13 +214,13 @@ def sample_subset_masks(avail: torch.Tensor, probs: Dict[str, float], rng: rando
     names, w = list(probs), list(probs.values())
     out = avail.clone()
     for b in range(avail.size(0)):
-        m = torch.tensor(SUBSETS[rng.choices(names, w)[0]], dtype=avail.dtype) * avail[b]
+        m = torch.tensor(SUBSETS[rng.choices(names, w)[0]], dtype=avail.dtype, device=avail.device) * avail[b]
         out[b] = m if m.sum() > 0 else avail[b]
     return out
 
 
 def subset_mask(avail: torch.Tensor, name: str) -> torch.Tensor:
-    return avail * torch.tensor(SUBSETS[name], dtype=avail.dtype)
+    return avail * torch.tensor(SUBSETS[name], dtype=avail.dtype, device=avail.device)
 
 
 __all__ = ["XMFDataset", "SUBSETS", "sample_subset_masks", "subset_mask", "MODALITIES"]
