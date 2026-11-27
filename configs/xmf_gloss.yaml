@@ -8,6 +8,13 @@ audio_bank: "data/xmf/bank/gloss_audio.npz"
 num_workers: 2
 cache: false                 # true jika RAM >= 8 GB (mempercepat epoch)
 model:
+  # Varian model (studi perbandingan; lihat docs/XMF_COMPARISON.md dan signbridge/xmf/compare.py)
+  fusion: attention          # early | weighted | gated | late | refusion | attention
+  encoders:
+    pose: transformer        # transformer | bigru | tcn
+    image: mobilenetv3       # mobilenetv3 | shufflenetv2 | efficientnet_b0 | resnet18
+    audio: cnn_transformer   # cnn_transformer | conformer | resnet
+    text: transformer        # transformer | bilstm | textcnn
   d_model: 128
   nhead: 4
   fusion_layers: 2

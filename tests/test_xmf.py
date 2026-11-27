@@ -124,3 +124,55 @@ def test_fixture_for_js_parity_is_current():
         assert encode_text(case["text"]) == case["ids"]
     for case in data["person_box"]:
         assert person_box_from_shoulders(case["l"], case["r"], case["w"], case["h"]) == pytest.approx(case["box"])
+
+
+VARIANTS = ([{"fusion": f} for f in ["early", "weighted", "gated", "late", "refusion", "attention"]]
+            + [{"encoders": {"pose": v}} for v in ["bigru", "tcn"]]
+            + [{"encoders": {"image": v}} for v in ["shufflenetv2", "efficientnet_b0", "resnet18"]]
+            + [{"encoders": {"audio": v}} for v in ["conformer", "resnet"]]
+            + [{"encoders": {"text": v}} for v in ["bilstm", "textcnn"]])
+
+
+@pytest.mark.parametrize("variant", VARIANTS, ids=lambda v: str(v.get("fusion") or v["encoders"]))
+def test_every_variant_respects_modality_mask(variant):
+    """Semua fusion & encoder: modalitas yang di-mask tidak berpengaruh; bobot modalitas jumlah 1."""
+    torch.manual_seed(0)
+    m = build_model("gloss", 32, dict(variant, pretrained_image=False)).eval()
+    x = list(_inputs("gloss", [1, 1, 0, 0]))
+    with torch.no_grad():
+        a = m(*x)
+        x[2] = torch.randn_like(x[2])
+        x[3] = torch.tensor([encode_text("hitam")])
+        b = m(*x)
+    assert a["logits"].shape == (1, 32) and a["modality_logits"].shape == (1, 4, 32)
+    assert torch.allclose(a["logits"], b["logits"], atol=1e-5)
+    w = b["modality_weights"]
+    assert float(w[0, 2]) == 0 and float(w[0, 3]) == 0 and abs(float(w.sum()) - 1) < 1e-5
+
+
+@pytest.mark.parametrize("variant", [{"fusion": "refusion", "encoders": {"audio": "conformer", "text": "bilstm"}},
+                                     {"fusion": "late", "encoders": {"image": "shufflenetv2", "pose": "tcn"}}])
+def test_variant_onnx_parity(variant):
+    ort = pytest.importorskip("onnxruntime")
+    torch.manual_seed(0)
+    w = XMFOnnx(build_model("gloss", 32, dict(variant, pretrained_image=False)).eval()).eval()
+    f = io.BytesIO()
+    torch.onnx.export(w, _inputs("gloss", [1, 1, 1, 1]), f, dynamo=False, opset_version=17,
+                      input_names=["pose", "frames", "audio", "text", "modality_mask"])
+    s = ort.InferenceSession(f.getvalue())
+    for mask in ([1, 1, 0, 0], [0, 0, 1, 1]):
+        x = _inputs("gloss", mask)
+        with torch.no_grad():
+            ref = w(*x)
+        got = s.run(None, {i.name: t.numpy() for i, t in zip(s.get_inputs(), x)})
+        for r, g in zip(ref, got):
+            assert np.max(np.abs(r.numpy() - g)) < 1e-3
+
+
+def test_set_overrides_and_variant_tag(tmp_path):
+    from signbridge.xmf.train import load_config, variant_tag
+
+    cfg = load_config(Path(__file__).parents[1] / "configs/xmf_gloss.yaml",
+                      sets=["model.fusion=gated", "model.encoders.audio=conformer", "training.max_epochs=3"])
+    assert cfg["model"]["fusion"] == "gated" and cfg["training"]["max_epochs"] == 3
+    assert variant_tag(cfg["model"]) == "gated-audio_conformer"

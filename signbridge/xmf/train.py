@@ -4,6 +4,8 @@ signbridge/xmf/train.py — TAHAP 4-5 (MODELING + TRAINING) SignBridge-XMF.
     python -m signbridge.xmf.train --config configs/xmf_gloss.yaml                    # protokol di config
     python -m signbridge.xmf.train --config configs/xmf_gloss.yaml --protocol si      # uji penanda baru
     python -m signbridge.xmf.train --config configs/xmf_gloss.yaml --protocol final   # model deploy
+    python -m signbridge.xmf.train --config configs/xmf_gloss.yaml --set model.fusion=gated \
+                                   --set model.encoders.audio=conformer               # varian lain
 
 Pemilihan checkpoint terbaik memakai macro-F1 validasi pada subset KAMERA SAJA (video+citra),
 karena itulah kondisi nyata pengguna Tuli di browser. Hasil: outputs/xmf/<exp>/{best.pt, history.csv, ...}
@@ -37,12 +39,29 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 
-def load_config(path: Path, overrides: Optional[Dict] = None) -> Dict:
+def load_config(path: Path, overrides: Optional[Dict] = None, sets: Optional[list] = None) -> Dict:
+    """`sets` = daftar "a.b.c=nilai", mis. ["model.fusion=gated", "model.encoders.audio=conformer"]."""
     cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
     for k, v in (overrides or {}).items():
         if v is not None:
             cfg[k] = v
+    for item in sets or []:
+        key, _, val = item.partition("=")
+        node = cfg
+        parts = key.strip().split(".")
+        for p in parts[:-1]:
+            node = node.setdefault(p, {})
+        node[parts[-1]] = yaml.safe_load(val)
     return cfg
+
+
+def variant_tag(model_cfg: Dict) -> str:
+    """Nama pendek varian, mis. 'gated' atau 'attention-audio_conformer'."""
+    from signbridge.xmf.model import DEFAULT_ENCODERS
+
+    enc = model_cfg.get("encoders") or {}
+    diff = [f"{k}_{v}" for k, v in sorted(enc.items()) if DEFAULT_ENCODERS.get(k) != v]
+    return "-".join([model_cfg.get("fusion", "attention")] + diff)
 
 
 def _to(batch: Dict[str, torch.Tensor], dev: torch.device) -> Dict[str, torch.Tensor]:
@@ -135,6 +154,7 @@ def train(cfg: Dict, protocol: str, out_dir: Path, device: Optional[str] = None,
     rng = random.Random(int(cfg.get("seed", 42)))
     probs = cfg["modality_subsets"]
 
+    print(f"[XMF] varian: {model.describe()}")
     print(f"[XMF] task={task} protokol={protocol} device={dev} | train/val/test={sizes} | "
           f"param={count_params(model):,} (latih {count_params(model, True):,})")
     hist, best, best_ep, bad = [], -1.0, -1, 0
@@ -181,7 +201,9 @@ def train(cfg: Dict, protocol: str, out_dir: Path, device: Optional[str] = None,
         w.writerows(hist)
     (out_dir / "train_summary.json").write_text(json.dumps(
         {"task": task, "protocol": protocol, "best_epoch": best_ep, "epochs_trained": len(hist),
-         "sizes": dict(zip(["train", "val", "test"], sizes)), "params": count_params(model)}, indent=2))
+         "sizes": dict(zip(["train", "val", "test"], sizes)), "params": count_params(model),
+         "variant": variant_tag(cfg.get("model", {})), "description": model.describe(),
+         "seconds": round(sum(r["sec"] for r in hist), 1)}, indent=2))
     print(f"[XMF] selesai. checkpoint terbaik epoch {best_ep} -> {out_dir / 'best.pt'}")
     return out_dir / "best.pt", test_l
 
@@ -194,10 +216,14 @@ def main(argv=None) -> None:
     ap.add_argument("--device", default=None)
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--no-eval", action="store_true")
+    ap.add_argument("--set", action="append", default=[], metavar="KUNCI=NILAI",
+                    help="ubah config, mis. --set model.fusion=gated --set model.encoders.audio=conformer")
     a = ap.parse_args(argv)
-    cfg = load_config(a.config)
+    cfg = load_config(a.config, sets=a.set)
     protocol = a.protocol or cfg.get("protocol", "sd")
-    out = a.out or ROOT / "outputs/xmf" / f"{cfg['experiment_id']}_{protocol}"
+    tag = variant_tag(cfg.get("model", {}))
+    name = cfg["experiment_id"] if tag == "attention" else f"{cfg['experiment_id']}_{tag}"
+    out = a.out or ROOT / "outputs/xmf" / f"{name}_{protocol}"
     ckpt, _ = train(cfg, protocol, out, a.device, a.epochs)
     if not a.no_eval and protocol != "final":
         from signbridge.xmf.evaluate import evaluate_checkpoint

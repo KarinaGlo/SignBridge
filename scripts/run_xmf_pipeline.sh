@@ -5,6 +5,7 @@
 #   bash scripts/run_xmf_pipeline.sh            # semua tahap, tugas gloss + alfabet
 #   STAGES="ingest preprocess" bash scripts/run_xmf_pipeline.sh
 #   TASKS=gloss PROTOCOLS="sd si" bash scripts/run_xmf_pipeline.sh
+#   TASKS=gloss STAGES=compare bash scripts/run_xmf_pipeline.sh   # studi perbandingan 6 fusion + encoder
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-python}"
@@ -26,6 +27,12 @@ for T in $TASKS; do
       $PY -m signbridge.xmf.train --config "configs/xmf_${T}.yaml" --protocol "$P"
     done
     $PY -m signbridge.xmf.train --config "configs/xmf_${T}.yaml" --protocol final
+  fi
+  if has compare; then
+    for P in $PROTOCOLS; do
+      [[ "$T" == alphabet && "$P" == si ]] && continue
+      $PY -m signbridge.xmf.compare --task "$T" --protocol "$P" --phase all ${EPOCHS:+--epochs "$EPOCHS"}
+    done
   fi
   has export && $PY -m signbridge.xmf.export --ckpt "outputs/xmf/XMF_${T}_final/best.pt" --out web/model
 done

@@ -94,7 +94,7 @@ def export(ckpt_path: Path, out_dir: Path, opset: int = 17, quantize: bool = Fal
 
     metrics_path = ckpt_path.parent / "evaluation_metrics.json"
     meta = {
-        "model": "SignBridge-XMF (Cross-Modal Attention Fusion Transformer)",
+        "model": f"SignBridge-XMF ({model.describe()})",
         "task": task, "classes": classes, "modalities": MODALITIES,
         "inputs": {
             "pose": [1, shapes.pose_frames, 86, 3], "frames": [1, shapes.image_frames, 3, shapes.image_side, shapes.image_side],
