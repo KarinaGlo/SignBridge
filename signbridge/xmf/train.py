@@ -64,6 +64,15 @@ def variant_tag(model_cfg: Dict) -> str:
     return "-".join([model_cfg.get("fusion", "attention")] + diff)
 
 
+def auto_device() -> str:
+    """GPU NVIDIA (Colab) > GPU Apple Silicon (MPS, MacBook M1–M4) > CPU."""
+    if torch.cuda.is_available():
+        return "cuda"
+    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _to(batch: Dict[str, torch.Tensor], dev: torch.device) -> Dict[str, torch.Tensor]:
     return {k: v.to(dev, non_blocking=True) for k, v in batch.items()}
 
@@ -133,7 +142,7 @@ def train(cfg: Dict, protocol: str, out_dir: Path, device: Optional[str] = None,
     task = cfg["task"]
     classes = classes_for(task)
     set_seed(int(cfg.get("seed", 42)))
-    dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    dev = torch.device(device or auto_device())
     out_dir.mkdir(parents=True, exist_ok=True)
     tl, vl, test_l, sizes = make_loaders(cfg, task, protocol)
     model = build_model(task, len(classes), cfg.get("model", {})).to(dev)

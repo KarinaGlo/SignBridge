@@ -56,11 +56,17 @@ def _plot_confusion(y, p, classes, path: Path, title: str) -> None:
     plt.close(fig)
 
 
+def auto_device() -> str:
+    from signbridge.xmf.train import auto_device as _a
+
+    return _a()
+
+
 def evaluate_checkpoint(ckpt_path: Path, out_dir: Optional[Path] = None, device: Optional[str] = None) -> dict:
     ck = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     cfg, task, classes, protocol = ck["config"], ck["task"], ck["classes"], ck["protocol"]
     out_dir = out_dir or ckpt_path.parent
-    dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    dev = torch.device(device or auto_device())
     mcfg = dict(cfg.get("model", {}), pretrained_image=False)
     model = build_model(task, len(classes), mcfg)
     model.load_state_dict(ck["model"])
